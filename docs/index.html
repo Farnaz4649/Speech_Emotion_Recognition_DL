@@ -968,12 +968,61 @@
   <div class="section-label">Pipeline overview</div>
 
   <!-- PIPELINE OVERVIEW IMAGE -->
-<div style="background:var(--indigo);padding:1.5rem 2.5rem 0;">
-  <img src="assets/audio_pipeline_flowchart.png"
-       alt="Full pipeline flowchart"
-       style="width:100%;max-width:980px;display:block;margin:0 auto;border-radius:6px;"
-       onerror="this.style.display='none'">
+<div style="background: var(--indigo); padding: 2rem; border-radius: 12px; box-sizing: border-box; margin: 1rem 0;">
+  
+  <div style="
+    width: 100%; 
+    height: 550px; /* Adjust this value to set the 'Slide' height */
+    overflow-x: auto; 
+    overflow-y: hidden; 
+    background: rgba(0,0,0,0.2); 
+    border-radius: 8px; 
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    /* Custom Scrollbar for Chrome/Safari/Edge */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
+  ">
+    
+    <img src="assets/audio_pipeline_flowchart.png"
+         alt="Full pipeline flowchart"
+         style="
+           height: 90%; /* Leaves a bit of breathing room top/bottom */
+           width: auto; 
+           padding: 0 2rem;
+           display: block;
+         "
+         onerror="this.parentElement.parentElement.style.display='none'">
+  </div>
+
+  <div style="
+    text-align: center; 
+    color: rgba(255,255,255,0.5); 
+    font-size: 0.8rem; 
+    margin-top: 0.8rem; 
+    text-transform: uppercase; 
+    letter-spacing: 1px;
+  ">
+    &larr; Use the scrollbar to view full pipeline details &rarr;
+  </div>
 </div>
+
+<style>
+  ::-webkit-scrollbar {
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.4);
+  }
+</style>
   
   <h2>From raw audio<br>to emotion prediction</h2>
   <p class="section-intro reveal">Six stages transform 2,880 RAVDESS recordings into trained classifiers. Click any stage to explore the full technical detail.</p>
