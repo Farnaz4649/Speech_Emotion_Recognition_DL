@@ -963,9 +963,6 @@
 </section>
 <hr class="section-divider">
   
-<!-- PIPELINE -->
-<section id="pipeline">
-  <div class="section-label">Pipeline overview</div>
 
   <!-- PIPELINE OVERVIEW IMAGE -->
 <div style="background: var(--indigo); padding: 2rem; border-radius: 12px; box-sizing: border-box; margin: 1rem 0;">
@@ -1023,6 +1020,10 @@
     background: rgba(255,255,255,0.4);
   }
 </style>
+
+  <!-- PIPELINE -->
+<section id="pipeline">
+  <div class="section-label">Pipeline overview</div>
   
   <h2>From raw audio<br>to emotion prediction</h2>
   <p class="section-intro reveal">Six stages transform 2,880 RAVDESS recordings into trained classifiers. Click any stage to explore the full technical detail.</p>
@@ -1549,10 +1550,18 @@ async function loadModels() {
     if (!tf) { statusEl.textContent = '⚠ TensorFlow.js not loaded — demo unavailable.'; return; }
 
     statusEl.textContent = '⏳ Loading CNN-B model...';
-    cnnModel = await tf.loadLayersModel('models/cnn_b/model.json');
+    // cnnModel = await tf.loadLayersModel('models/cnn_b/model.json');
+    statusEl.textContent = '⏳ Loading CNN-B model...';
+    const cnnUrl = new URL('models/cnn_b/model.json', window.location.href).href;
+    console.log('Loading CNN-B from:', cnnUrl);
+    cnnModel = await tf.loadLayersModel(cnnUrl);
 
     statusEl.textContent = '⏳ Loading BiLSTM model...';
-    lstmModel = await tf.loadLayersModel('models/lstm/model.json');
+    // lstmModel = await tf.loadLayersModel('models/lstm/model.json');
+    statusEl.textContent = '⏳ Loading BiLSTM model...';
+    const lstmUrl = new URL('models/lstm/model.json', window.location.href).href;
+    console.log('Loading BiLSTM from:', lstmUrl);
+    lstmModel = await tf.loadLayersModel(lstmUrl);
 
     statusEl.textContent = '⏳ Loading scalers...';
     const [scalersResp, configResp] = await Promise.all([
@@ -2012,7 +2021,7 @@ function showError(msg) {
 // Load TF.js then models
 (function loadTFJS() {
   const script = document.createElement('script');
-  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.10.0/tf.min.js';
+  script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js';
   script.onload = () => loadModels();
   script.onerror = () => { statusEl.textContent = '⚠ TensorFlow.js failed to load. Check your internet connection.'; };
   document.head.appendChild(script);
