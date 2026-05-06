@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BiLSTM · Temporal Model — SER · MAI 604</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --indigo:#22273e; --pacific:#5c9eab; --aqua:#9ad2d1; --blush:#e2d7da; --salmon:#e09079; --radius:6px; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--blush); color: var(--indigo); font-family: 'DM Sans', sans-serif; font-weight: 300; line-height: 1.7; overflow-x: hidden; }
+
+  nav { position: sticky; top: 0; z-index: 100; background: var(--indigo); display: flex; align-items: center; justify-content: space-between; padding: 0 2.5rem; height: 52px; border-bottom: 1px solid rgba(156,210,209,.15); }
+  .nav-back { font-family: 'DM Mono', monospace; font-size: .7rem; color: var(--aqua); text-decoration: none; letter-spacing: .08em; text-transform: uppercase; display: flex; align-items: center; gap: .5rem; transition: gap .2s; }
+  .nav-back:hover { gap: .8rem; }
+  .nav-tag { font-family: 'DM Mono', monospace; font-size: .68rem; color: rgba(156,210,209,.45); letter-spacing: .06em; }
+
+  .page-hero { background: var(--indigo); padding: 4rem 2.5rem 3rem; position: relative; overflow: hidden; }
+  .page-hero::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(92,158,171,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(92,158,171,.05) 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; }
+  .page-hero-inner { position: relative; z-index: 1; max-width: 700px; }
+  .page-label { font-family: 'DM Mono', monospace; font-size: .68rem; color: var(--aqua); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 1rem; }
+  .page-label::before { content: '// '; }
+  .page-hero h1 { font-family: 'DM Serif Display', serif; font-size: clamp(2rem, 4vw, 3.2rem); color: white; line-height: 1.1; margin-bottom: .8rem; }
+  .page-hero h1 em { font-style: italic; color: var(--aqua); }
+  .page-hero p { font-size: .95rem; color: rgba(156,210,209,.6); font-weight: 300; max-width: 520px; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(34,39,62,.6); border-bottom: 1px solid rgba(156,210,209,.1); }
+  .stat-cell { padding: 1.6rem 1.8rem; border-right: 1px solid rgba(156,210,209,.08); }
+  .stat-cell:last-child { border-right: none; }
+  .stat-num { font-family: 'DM Serif Display', serif; font-size: 1.8rem; color: var(--aqua); line-height: 1; }
+  .stat-num sup { font-size: .55em; vertical-align: super; }
+  .stat-desc { font-family: 'DM Mono', monospace; font-size: .62rem; color: rgba(156,210,209,.5); letter-spacing: .07em; text-transform: uppercase; line-height: 1.4; margin-top: .4rem; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 4rem 2.5rem; }
+  h2 { font-family: 'DM Serif Display', serif; font-size: clamp(1.5rem, 2.8vw, 2rem); color: var(--indigo); line-height: 1.2; margin-bottom: .5rem; }
+  h2 em { font-style: italic; color: var(--pacific); }
+  .section-label { font-family: 'DM Mono', monospace; font-size: .66rem; color: var(--pacific); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .8rem; }
+  .section-label::before { content: '// '; }
+  .block { margin-bottom: 4rem; }
+  .card { background: white; border: 1px solid rgba(92,158,171,.18); border-radius: var(--radius); padding: 1.8rem; }
+  .card-title { font-family: 'DM Mono', monospace; font-size: .66rem; color: var(--pacific); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 1.2rem; }
+  .card-title::before { content: '// '; }
+
+  /* ── ANIMATED SEQUENCE DIAGRAM ── */
+  .seq-diagram-wrap { overflow-x: auto; padding-bottom: 1rem; }
+  .seq-diagram {
+    min-width: 860px;
+    padding: 2rem 1.5rem;
+    display: flex; align-items: stretch; gap: 0;
+    position: relative;
+  }
+
+  /* vertical time axis on left */
+  .time-axis {
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: .5rem 0;
+    margin-right: 1rem;
+    flex-shrink: 0; width: 52px;
+  }
+  .time-label {
+    font-family: 'DM Mono', monospace; font-size: .52rem;
+    color: rgba(92,158,171,.5); letter-spacing: .06em;
+    text-transform: uppercase; text-align: center;
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    height: 100%;
+  }
+
+  /* main diagram columns */
+  .seq-col {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0; flex-shrink: 0;
+    position: relative;
+  }
+  /* forward / backward row */
+  .bilstm-block {
+    position: relative;
+    width: 130px;
+    flex-shrink: 0;
+    display: flex; flex-direction: column;
+  }
+  .bilstm-fwd {
+    height: 56px;
+    background: rgba(92,158,171,.18);
+    border: 1.5px solid var(--pacific);
+    border-radius: 4px 4px 0 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace; font-size: .58rem;
+    color: var(--indigo); text-align: center; line-height: 1.3;
+    position: relative; overflow: hidden;
+  }
+  .bilstm-bwd {
+    height: 56px;
+    background: rgba(156,210,209,.15);
+    border: 1.5px solid var(--aqua);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace; font-size: .58rem;
+    color: var(--indigo); text-align: center; line-height: 1.3;
+    position: relative; overflow: hidden;
+  }
+  /* animated sweep inside bilstm cell */
+  .bilstm-fwd::after, .bilstm-bwd::after {
+    content: '';
+    position: absolute; top: 0; bottom: 0; left: -100%;
+    width: 60%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
+    animation: sweep 2s ease-in-out infinite;
+  }
+  .bilstm-bwd::after { animation-direction: reverse; animation-delay: .3s; }
+  @keyframes sweep { 0% { left: -60%; } 100% { left: 110%; } }
+
+  .seq-label {
+    font-family: 'DM Mono', monospace; font-size: .6rem;
+    color: var(--pacific); letter-spacing: .06em;
+    text-align: center; margin-top: .4rem; line-height: 1.3;
+  }
+  .seq-shape {
+    font-family: 'DM Mono', monospace; font-size: .54rem;
+    color: rgba(34,39,62,.5); text-align: center; margin-top: .15rem;
+  }
+
+  /* horizontal connector between blocks */
+  .seq-conn {
+    display: flex; align-items: center;
+    width: 44px; flex-shrink: 0;
+    position: relative;
+  }
+  .seq-conn-line {
+    width: 100%; height: 2px;
+    background: rgba(92,158,171,.3);
+    position: relative;
+  }
+  .seq-conn-dot {
+    position: absolute; top: -4px; left: 0;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--aqua);
+    box-shadow: 0 0 6px var(--aqua);
+    animation: seqTravel 2s ease-in-out infinite;
+    opacity: 0;
+  }
+  @keyframes seqTravel { 0%{left:0%;opacity:0;} 10%{opacity:1;} 90%{opacity:1;} 100%{left:100%;opacity:0;} }
+
+  /* simple boxes for masking, dropout, dense, output */
+  .seq-box {
+    height: 112px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: .25rem;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace; font-size: .58rem;
+    text-align: center; line-height: 1.3;
+    flex-shrink: 0; width: 80px;
+    padding: .4rem;
+  }
+  .seq-box.mask     { background: rgba(34,39,62,.08); border: 1.5px dashed rgba(34,39,62,.2); color: rgba(34,39,62,.6); }
+  .seq-box.drop     { background: rgba(156,210,209,.08); border: 1.5px dashed rgba(156,210,209,.5); color: rgba(34,39,62,.55); }
+  .seq-box.dense-b  { background: rgba(34,39,62,.88); border: 1.5px solid var(--indigo); color: var(--aqua); }
+  .seq-box.output-b { background: var(--indigo); border: 2px solid var(--pacific); color: var(--aqua); }
+
+  /* ── CORE QUESTION CARD ── */
+  .core-question {
+    background: var(--indigo); border-radius: var(--radius);
+    padding: 2rem 2.5rem; margin-bottom: 2rem;
+  }
+  .core-question .cq-label { font-family: 'DM Mono', monospace; font-size: .62rem; color: var(--aqua); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .6rem; }
+  .core-question .cq-q { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: white; line-height: 1.3; margin-bottom: .8rem; }
+  .core-question .cq-a { font-size: .88rem; color: rgba(156,210,209,.7); line-height: 1.65; }
+
+  /* ── DIM TABLE ── */
+  .dim-table { width: 100%; border-collapse: collapse; font-size: .84rem; background: white; border-radius: var(--radius); overflow: hidden; border: 1px solid rgba(92,158,171,.18); }
+  .dim-table th { background: var(--indigo); color: var(--aqua); font-family: 'DM Mono', monospace; font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; padding: .75rem 1rem; text-align: left; font-weight: 400; }
+  .dim-table td { padding: .7rem 1rem; border-bottom: 1px solid rgba(92,158,171,.1); color: var(--indigo); font-weight: 300; }
+  .dim-table tr:last-child td { border-bottom: none; }
+  .dim-table tr:hover td { background: rgba(92,158,171,.04); }
+  .dim-table .mono { font-family: 'DM Mono', monospace; font-size: .8rem; color: var(--pacific); }
+  .dim-table .note { font-size: .78rem; color: rgba(34,39,62,.5); }
+
+  /* ── CONTRAST CARD ── */
+  .contrast-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+  .contrast-card { border-radius: var(--radius); padding: 1.5rem; }
+  .contrast-card.cnn-side { background: rgba(34,39,62,.05); border: 1px solid rgba(34,39,62,.12); }
+  .contrast-card.lstm-side { background: rgba(92,158,171,.06); border: 1px solid rgba(92,158,171,.2); }
+  .contrast-card .c-label { font-family: 'DM Mono', monospace; font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: .5rem; }
+  .contrast-card.cnn-side .c-label { color: rgba(34,39,62,.5); }
+  .contrast-card.lstm-side .c-label { color: var(--pacific); }
+  .contrast-card .c-shape { font-family: 'DM Serif Display', serif; font-size: 1.4rem; color: var(--indigo); margin-bottom: .4rem; }
+  .contrast-card .c-body { font-size: .8rem; color: rgba(34,39,62,.65); line-height: 1.55; }
+
+  .silver-card { background: var(--indigo); border-radius: var(--radius); padding: 1.8rem; margin-top: 2rem; }
+  .silver-card .s-label { font-family: 'DM Mono', monospace; font-size: .62rem; color: var(--aqua); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .5rem; }
+  .silver-card .s-title { font-family: 'DM Serif Display', serif; font-size: 1.2rem; color: white; margin-bottom: .5rem; }
+  .silver-card .s-body { font-size: .85rem; color: rgba(156,210,209,.7); line-height: 1.65; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+  .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .info-chip { background: white; border: 1px solid rgba(92,158,171,.18); border-radius: var(--radius); padding: 1.2rem; }
+  .info-chip-label { font-family: 'DM Mono', monospace; font-size: .6rem; color: var(--pacific); letter-spacing: .08em; text-transform: uppercase; margin-bottom: .3rem; }
+  .info-chip-val { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: var(--indigo); line-height: 1; }
+  .info-chip-sub { font-size: .75rem; color: rgba(34,39,62,.5); margin-top: .2rem; }
+
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity .5s ease, transform .5s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  footer { background: var(--indigo); border-top: 1px solid rgba(156,210,209,.1); padding: 2rem 2.5rem; display: flex; justify-content: space-between; align-items: center; }
+  .footer-left { font-family: 'DM Mono', monospace; font-size: .63rem; color: rgba(156,210,209,.45); letter-spacing: .07em; line-height: 1.7; }
+  .footer-right a { font-family: 'DM Mono', monospace; font-size: .66rem; color: var(--pacific); text-decoration: none; border-bottom: 1px solid rgba(92,158,171,.3); transition: border-color .2s; }
+  .footer-right a:hover { border-color: var(--pacific); }
+
+  @media (max-width: 800px) {
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .two-col, .info-grid, .contrast-row { grid-template-columns: 1fr; }
+    main { padding: 3rem 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-back" href="index.html">← Back to overview</a>
+  <span class="nav-tag">Architecture 03 of 03</span>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="page-label">Architecture · BiLSTM</div>
+    <h1>BiLSTM · <em>Temporal Model</em></h1>
+    <p>A stacked bidirectional LSTM that processes frame-level sequences directly, retaining temporal order across 130 analysis frames. Strongest cross-domain generaliser.</p>
+  </div>
+  <div class="stat-row" style="margin-top:2.5rem;border-radius:var(--radius);">
+    <div class="stat-cell"><div class="stat-num">93.52<sup>%</sup></div><div class="stat-desc">Accuracy · augmented</div></div>
+    <div class="stat-cell"><div class="stat-num">85.76<sup>%</sup></div><div class="stat-desc">Accuracy · plain</div></div>
+    <div class="stat-cell"><div class="stat-num">+7.75<sup>pp</sup></div><div class="stat-desc">Augmentation gain — highest of all</div></div>
+    <div class="stat-cell"><div class="stat-num">437<sup>K</sup></div><div class="stat-desc">Parameters</div></div>
+  </div>
+</div>
+
+<main>
+
+  <!-- CORE QUESTION -->
+  <div class="block reveal">
+    <div class="core-question">
+      <div class="cq-label">The core research question</div>
+      <div class="cq-q">Does temporal frame-level modelling outperform deep statistical compression on short, controlled studio recordings?</div>
+      <div class="cq-a">The answer is nuanced. On in-domain RAVDESS data with augmentation, both CNN-B (93.98%) and BiLSTM (93.52%) achieve comparable performance. However, the BiLSTM (augmented) achieves 26.1% on CREMA-D — 6.2 percentage points better than CNN-B's 19.9%. Temporal sequence modelling encodes slightly more speaker-independent acoustic information than static statistical compression, making it a better generaliser despite equivalent in-domain performance.</div>
+    </div>
+  </div>
+
+  <!-- CNN vs LSTM INPUT CONTRAST -->
+  <div class="block reveal">
+    <div class="section-label">Architectural distinction</div>
+    <h2>Temporal vs <em>statistical</em> compression</h2>
+    <div class="contrast-row">
+      <div class="contrast-card cnn-side">
+        <div class="c-label">CNN-A / CNN-B input</div>
+        <div class="c-shape">(N, 524, 1)</div>
+        <div class="c-body">Statistical compression: each feature type is summarised as mean and standard deviation across all frames. Temporal order is completely discarded. The model sees a snapshot of the utterance, not its evolution over time.</div>
+      </div>
+      <div class="contrast-card lstm-side">
+        <div class="c-label">BiLSTM input</div>
+        <div class="c-shape">(N, 130, 120)</div>
+        <div class="c-body">Temporal preservation: 130 analysis frames (~23 ms each), each containing 40 MFCCs + 40 Deltas + 40 Delta-Deltas = 120 features. The model can learn how spectral patterns change over the course of the utterance — including prosodic dynamics like rising pitch in surprise or falling energy in sadness.</div>
+      </div>
+    </div>
+    <p style="font-size:.85rem;color:rgba(34,39,62,.6);margin-top:.5rem;font-weight:300;">RAVDESS is an offline corpus — full utterances are available at inference time, making bidirectional processing valid. The forward LSTM reads frames left-to-right, the backward LSTM reads right-to-left; both are concatenated at each timestep, doubling the hidden state.</p>
+  </div>
+
+  <!-- ANIMATED SEQUENCE DIAGRAM -->
+  <div class="block reveal">
+    <div class="section-label">Layer architecture</div>
+    <h2>Animated <em>sequence diagram</em></h2>
+    <p style="font-size:.88rem;color:rgba(34,39,62,.6);margin-bottom:1.5rem;font-weight:300;">The horizontal axis is the layer sequence. Blue cells show the forward LSTM pass; teal cells show the backward pass. The moving lights show information flowing in both directions simultaneously.</p>
+
+    <div class="card">
+      <div class="card-title">BiLSTM · input (130,120) → output (8,) softmax · 436,872 parameters</div>
+      <div class="seq-diagram-wrap">
+        <div class="seq-diagram" id="lstmDiagram">
+
+          <!-- Input -->
+          <div class="seq-col">
+            <div class="seq-box mask" style="width:84px;">
+              Input<br>(130, 120)
+            </div>
+            <div class="seq-label">Input</div>
+            <div class="seq-shape">(130, 120)</div>
+          </div>
+
+          <div class="seq-conn"><div class="seq-conn-line"><div class="seq-conn-dot" style="animation-delay:0s"></div></div></div>
+
+          <!-- Masking -->
+          <div class="seq-col">
+            <div class="seq-box mask" style="width:84px;">
+              Masking<br><span style="font-size:.5rem;opacity:.65">mask=0</span>
+            </div>
+            <div class="seq-label">Masking</div>
+            <div class="seq-shape">(130, 120)</div>
+          </div>
+
+          <div class="seq-conn"><div class="seq-conn-line"><div class="seq-conn-dot" style="animation-delay:.3s"></div></div></div>
+
+          <!-- BiLSTM 1 -->
+          <div class="seq-col">
+            <div class="bilstm-block">
+              <div class="bilstm-fwd">Forward LSTM<br>128 units<br>→ tanh</div>
+              <div class="bilstm-bwd">Backward LSTM<br>128 units<br>← tanh</div>
+            </div>
+            <div class="seq-label">BiLSTM Layer 1<br>return_seq=True</div>
+            <div class="seq-shape">(130, 256)</div>
+          </div>
+
+          <div class="seq-conn"><div class="seq-conn-line"><div class="seq-conn-dot" style="animation-delay:.6s"></div></div></div>
+
+          <!-- Dropout -->
+          <div class="seq-col">
+            <div class="seq-box drop">Dropout<br>0.3</div>
+            <div class="seq-label">Dropout</div>
+            <div class="seq-shape">(130, 256)</div>
+          </div>
+
+          <div class="seq-conn"><div class="seq-conn-line"><div class="seq-conn-dot" style="animation-delay:.9s"></div></div></div>
+
+          <!-- BiLSTM 2 -->
+          <div class="seq-col">
+            <div class="bilstm-block">
+              <div class="bilstm-fwd">Forward LSTM<br>64 units<br>→ tanh</div>
+              <div class="bilstm-bwd">Backward LSTM<br>64 units<br>← tanh</div>
+            </div>
+            <div class="seq-label">BiLSTM Layer 2<br>return_seq=False</div>
+            <div class="seq-shape">(128,)</div>
+          </div>
+
+          <div class="seq-conn"><div class="seq-conn-line"><div class="seq-conn-dot" style="animation-delay:1.2s"></div></div></div>
+
+          <!-- Dropout -->
+          <div class="seq-col">
+            <div class="seq-box drop">Dropout<br>0.3</div>
+            <div class="seq-label">Dropout</div>
+            <div class="seq-shape">(128,)</div>
+          </div>
+
+          <div class="seq-conn"><div class="seq-conn-line"><div class="seq-conn-dot" style="animation-delay:1.5s"></div></div></div>
+
+          <!-- Dense -->
+          <div class="seq-col">
+            <div class="seq-box dense-b" style="width:84px;">Dense 128<br>+ ReLU</div>
+            <div class="seq-label">Dense</div>
+            <div class="seq-shape">(128,)</div>
+          </div>
+
+          <div class="seq-conn"><div class="seq-conn-line"><div class="seq-conn-dot" style="animation-delay:1.8s"></div></div></div>
+
+          <!-- Dropout -->
+          <div class="seq-col">
+            <div class="seq-box drop">Dropout<br>0.3</div>
+            <div class="seq-label">Dropout</div>
+            <div class="seq-shape">(128,)</div>
+          </div>
+
+          <div class="seq-conn"><div class="seq-conn-line"><div class="seq-conn-dot" style="animation-delay:2.1s"></div></div></div>
+
+          <!-- Output -->
+          <div class="seq-col">
+            <div class="seq-box output-b" style="width:84px;">Dense 8<br>softmax</div>
+            <div class="seq-label">Output</div>
+            <div class="seq-shape">(8,)</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Bidirectional note -->
+      <div style="display:flex;gap:1rem;margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(92,158,171,.1);flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <div style="width:14px;height:14px;background:rgba(92,158,171,.18);border:1.5px solid var(--pacific);border-radius:2px;"></div>
+          <span style="font-family:'DM Mono',monospace;font-size:.62rem;color:rgba(34,39,62,.6);">Forward pass (left → right)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <div style="width:14px;height:14px;background:rgba(156,210,209,.15);border:1.5px solid var(--aqua);border-radius:2px;"></div>
+          <span style="font-family:'DM Mono',monospace;font-size:.62rem;color:rgba(34,39,62,.6);">Backward pass (right → left)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-left:auto;">
+          <span style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--pacific);">Layer 1 output: 128 fwd + 128 bwd = 256 per timestep</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIMENSION TRACE -->
+  <div class="block reveal">
+    <div class="section-label">Dimensionality trace</div>
+    <h2>Layer-by-layer <em>shapes</em></h2>
+    <div class="card">
+      <div class="card-title">BiLSTM · layer-by-layer dimensionality trace</div>
+      <table class="dim-table">
+        <thead><tr><th>Layer</th><th>Operation</th><th>Output shape</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Input</td>  <td>Input</td>                            <td class="mono">(130, 120)</td><td class="note">130 frames × 120 features (MFCC + Δ + ΔΔ)</td></tr>
+          <tr><td></td>       <td>Masking (mask_value=0)</td>           <td class="mono">(130, 120)</td><td class="note">Ignores zero-padded frames in LSTM computation</td></tr>
+          <tr><td>Layer 1</td><td>Bidirectional(LSTM(128), ret_seq=True)</td><td class="mono">(130, 256)</td><td class="note">128 fwd + 128 bwd concatenated per timestep</td></tr>
+          <tr><td></td>       <td>Dropout(0.3)</td>                     <td class="mono">(130, 256)</td><td class="note"></td></tr>
+          <tr><td>Layer 2</td><td>Bidirectional(LSTM(64), ret_seq=False)</td><td class="mono">(128,)</td>  <td class="note">64 fwd + 64 bwd — collapses time axis</td></tr>
+          <tr><td></td>       <td>Dropout(0.3)</td>                     <td class="mono">(128,)</td>  <td class="note"></td></tr>
+          <tr><td>Head</td>   <td>Dense(128) + ReLU</td>                <td class="mono">(128,)</td>  <td class="note">Adam lr = 0.001</td></tr>
+          <tr><td></td>       <td>Dropout(0.3)</td>                     <td class="mono">(128,)</td>  <td class="note"></td></tr>
+          <tr><td>Output</td> <td>Dense(8, softmax)</td>                <td class="mono">(8,)</td>    <td class="note">8 emotion classes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE -->
+  <div class="block reveal">
+    <div class="section-label">Performance detail</div>
+    <h2>Per-class recall &amp; <em>training</em></h2>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Per-class recall — augmented regime (acc=0.935)</div>
+        <table class="dim-table">
+          <thead><tr><th>Emotion</th><th>Recall (plain)</th><th>Recall (aug)</th></tr></thead>
+          <tbody>
+            <tr><td>Angry</td>    <td class="mono">0.92</td><td class="mono">0.94</td></tr>
+            <tr><td>Calm</td>     <td class="mono">0.83</td><td class="mono">0.96</td></tr>
+            <tr><td>Disgust</td>  <td class="mono">0.92</td><td class="mono">0.96</td></tr>
+            <tr><td>Fearful</td>  <td class="mono">0.83</td><td class="mono">0.94</td></tr>
+            <tr><td>Happy</td>    <td class="mono">0.86</td><td class="mono">0.96</td></tr>
+            <tr><td style="color:var(--salmon)">Neutral ⚠</td><td class="mono" style="color:var(--salmon)">0.71</td><td class="mono">0.83</td></tr>
+            <tr><td>Sad</td>      <td class="mono">0.86</td><td class="mono">0.87</td></tr>
+            <tr><td>Surprised</td><td class="mono">0.86</td><td class="mono">0.97</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:.75rem;color:rgba(34,39,62,.55);margin-top:1rem;line-height:1.5;">Augmentation produces the largest per-class recall gains of all architectures — Calm jumps from 0.83 to 0.96, Fearful from 0.83 to 0.94. Recurrent models require diverse temporal patterns to learn transitions, and augmentation provides exactly that.</p>
+      </div>
+
+      <div>
+        <div class="info-grid" style="margin-bottom:1.5rem;">
+          <div class="info-chip"><div class="info-chip-label">Optimiser</div><div class="info-chip-val">Adam</div><div class="info-chip-sub">lr = 0.001</div></div>
+          <div class="info-chip"><div class="info-chip-label">Aug Δ acc</div><div class="info-chip-val" style="color:var(--pacific)">+7.75<span style="font-size:.7em">pp</span></div><div class="info-chip-sub">highest of all models</div></div>
+          <div class="info-chip"><div class="info-chip-label">Weighted F1</div><div class="info-chip-val">0.935</div><div class="info-chip-sub">augmented regime</div></div>
+          <div class="info-chip"><div class="info-chip-label">CREMA-D</div><div class="info-chip-val">26.1%</div><div class="info-chip-sub">best generaliser (+6.2pp over CNN-B)</div></div>
+          <div class="info-chip"><div class="info-chip-label">Epochs</div><div class="info-chip-val">35 / 32</div><div class="info-chip-sub">plain / augmented</div></div>
+          <div class="info-chip"><div class="info-chip-label">Parameters</div><div class="info-chip-val">437K</div><div class="info-chip-sub">vs 365K for CNN-B</div></div>
+        </div>
+        <div class="silver-card">
+          <div class="s-label">✦ Cross-dataset silver lining</div>
+          <div class="s-title">The strongest generaliser</div>
+          <div class="s-body">While CNN-B achieves higher in-domain accuracy (93.98% vs 93.52%), the BiLSTM (augmented) is the only model that reaches 26.1% on CREMA-D — versus 19.9% for CNN-B (augmented). The gap between RAVDESS accuracy and CREMA-D accuracy (−67.4pp) is smaller for BiLSTM than for any other model tested. Temporal sequence modelling encodes slightly more speaker-independent acoustic information than static statistical compression, because it learns how spectral patterns transition over time rather than just what their average values are.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:1rem;margin-top:1rem;" class="reveal">
+    <a href="cnn_b.html" style="font-family:'DM Mono',monospace;font-size:.7rem;color:var(--pacific);text-decoration:none;border-bottom:1px solid rgba(92,158,171,.3);">← CNN-B</a>
+    <a href="index.html" style="font-family:'DM Mono',monospace;font-size:.7rem;color:var(--pacific);text-decoration:none;border-bottom:1px solid rgba(92,158,171,.3);">Overview →</a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-left">MAI 604 · Deep Learning · Canadian University Dubai · 2026<br>Farnaz Azarparand · Rajeev Pandey · Hussein Aboueldahab</div>
+  <div class="footer-right"><a href="https://github.com/Farnaz4649/Speech_Emotion_Recognition_DL" target="_blank">github.com/Farnaz4649/Speech_Emotion_Recognition_DL</a></div>
+</footer>
+
+<script>
+const obs = new IntersectionObserver(
+  entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }),
+  { threshold: .1 }
+);
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>

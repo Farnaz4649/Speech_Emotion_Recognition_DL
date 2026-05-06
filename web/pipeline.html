@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline — SER · MAI 604</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --indigo:  #22273e;
+    --pacific: #5c9eab;
+    --aqua:    #9ad2d1;
+    --blush:   #e2d7da;
+    --salmon:  #e09079;
+    --radius:  6px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--blush);
+    color: var(--indigo);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--indigo);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5rem;
+    height: 52px;
+    border-bottom: 1px solid rgba(156,210,209,.15);
+  }
+  .nav-back {
+    font-family: 'DM Mono', monospace;
+    font-size: .7rem;
+    color: var(--aqua);
+    text-decoration: none;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: .5rem;
+    transition: gap .2s;
+  }
+  .nav-back:hover { gap: .8rem; }
+  .jump-nav {
+    display: flex; gap: 0;
+    background: rgba(255,255,255,.06);
+    border-radius: var(--radius);
+    padding: .25rem;
+  }
+  .jump-link {
+    font-family: 'DM Mono', monospace;
+    font-size: .64rem;
+    color: rgba(156,210,209,.6);
+    text-decoration: none;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: .4rem 1rem;
+    border-radius: 4px;
+    transition: background .2s, color .2s;
+    white-space: nowrap;
+  }
+  .jump-link:hover,
+  .jump-link.active { background: var(--pacific); color: white; }
+
+  /* ── PAGE HERO ── */
+  .page-hero {
+    background: var(--indigo);
+    padding: 4rem 2.5rem 3rem;
+    position: relative; overflow: hidden;
+  }
+  .page-hero::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(92,158,171,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(92,158,171,.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+  .page-hero-inner { position: relative; z-index: 1; max-width: 700px; }
+  .page-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .68rem;
+    color: var(--aqua);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .page-label::before { content: '// '; }
+  .page-hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    color: white;
+    line-height: 1.1;
+    margin-bottom: .8rem;
+  }
+  .page-hero h1 em { font-style: italic; color: var(--aqua); }
+  .page-hero p {
+    font-size: .95rem;
+    color: rgba(156,210,209,.6);
+    font-weight: 300;
+    max-width: 520px;
+  }
+
+  /* ── PRESENTER SECTION ── */
+  .presenter-section {
+    scroll-margin-top: 52px;
+    border-bottom: 1px solid rgba(92,158,171,.12);
+  }
+  .presenter-section:last-child { border-bottom: none; }
+
+  .presenter-header {
+    padding: 3.5rem 2.5rem 0;
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 2rem; flex-wrap: wrap;
+  }
+  .presenter-header-left {}
+  .section-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: .62rem;
+    color: var(--pacific);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: .8rem;
+    display: flex; align-items: center; gap: .6rem;
+  }
+  .section-tag::before { content: '//'; color: rgba(92,158,171,.4); }
+  .section-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--pacific);
+    color: white;
+    font-size: .6rem;
+    font-weight: 500;
+  }
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    color: var(--indigo);
+    line-height: 1.15;
+    margin-bottom: .5rem;
+  }
+  h2 em { font-style: italic; color: var(--pacific); }
+  .section-desc {
+    font-size: .92rem;
+    color: rgba(34,39,62,.65);
+    max-width: 540px;
+    font-weight: 300;
+  }
+
+  /* section body */
+  .section-body {
+    padding: 2.5rem 2.5rem 4rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ── GRID HELPERS ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+
+  /* ── CARD ── */
+  .card {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 1.8rem;
+  }
+  .card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: .66rem;
+    color: var(--pacific);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .card-title::before { content: '// '; }
+
+  /* ── FEATURE VIZ PANELS ── */
+  .viz-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+    margin-bottom: 2rem;
+  }
+  .viz-panel {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+  }
+  .viz-panel-header {
+    background: var(--indigo);
+    padding: .6rem 1rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .viz-panel-title {
+    font-family: 'DM Mono', monospace;
+    font-size: .62rem;
+    color: var(--aqua);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .viz-panel-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: .58rem;
+    color: rgba(156,210,209,.5);
+    letter-spacing: .06em;
+  }
+  .viz-panel img {
+    width: 100%;
+    display: block;
+    object-fit: cover;
+  }
+  .viz-panel-note {
+    padding: .8rem 1rem;
+    font-size: .78rem;
+    color: rgba(34,39,62,.6);
+    line-height: 1.5;
+  }
+
+  /* ── FEATURE TABLE ── */
+  .feature-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .84rem;
+    background: white;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid rgba(92,158,171,.18);
+  }
+  .feature-table th {
+    background: var(--indigo);
+    color: var(--aqua);
+    font-family: 'DM Mono', monospace;
+    font-size: .62rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .75rem 1rem;
+    text-align: left;
+    font-weight: 400;
+  }
+  .feature-table td {
+    padding: .7rem 1rem;
+    border-bottom: 1px solid rgba(92,158,171,.1);
+    color: var(--indigo);
+    font-weight: 300;
+  }
+  .feature-table tr:last-child td { border-bottom: none; }
+  .feature-table tr:hover td { background: rgba(92,158,171,.04); }
+  .feature-table .ft-name { font-weight: 500; }
+  .feature-table .ft-dim {
+    font-family: 'DM Mono', monospace;
+    font-size: .78rem;
+    color: var(--pacific);
+    font-weight: 500;
+  }
+  .feature-table .ft-total td {
+    background: var(--indigo);
+    color: var(--aqua);
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+
+  /* ── PREPROCESS STEPS ── */
+  .steps-row {
+    display: flex; gap: 0;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+  }
+  .step-block {
+    flex: 1; min-width: 160px;
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-right: none;
+    padding: 1.4rem 1.2rem;
+    position: relative;
+  }
+  .step-block:last-child { border-right: 1px solid rgba(92,158,171,.18); border-radius: 0 var(--radius) var(--radius) 0; }
+  .step-block:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+  .step-block::after {
+    content: '→';
+    position: absolute; right: -10px; top: 50%;
+    transform: translateY(-50%);
+    font-size: .9rem;
+    color: var(--pacific);
+    z-index: 2;
+    background: var(--blush);
+    padding: 0 2px;
+  }
+  .step-block:last-child::after { display: none; }
+  .step-num {
+    font-family: 'DM Mono', monospace;
+    font-size: .58rem;
+    color: rgba(92,158,171,.5);
+    letter-spacing: .1em;
+    margin-bottom: .4rem;
+  }
+  .step-title {
+    font-size: .85rem;
+    font-weight: 500;
+    color: var(--indigo);
+    margin-bottom: .3rem;
+    line-height: 1.3;
+  }
+  .step-detail {
+    font-size: .75rem;
+    color: rgba(34,39,62,.55);
+    line-height: 1.4;
+  }
+
+  /* ── INPUT MODE COMPARISON ── */
+  .mode-compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;
+    margin-top: 2rem;
+  }
+  .mode-card {
+    border-radius: var(--radius);
+    padding: 1.8rem;
+    border: 1px solid rgba(92,158,171,.2);
+    position: relative;
+    overflow: hidden;
+  }
+  .mode-card.cnn-mode { background: white; }
+  .mode-card.lstm-mode { background: rgba(34,39,62,.04); }
+  .mode-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .62rem;
+    color: var(--pacific);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: .6rem;
+  }
+  .mode-label::before { content: '// '; }
+  .mode-shape {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    color: var(--indigo);
+    margin-bottom: .5rem;
+  }
+  .mode-desc {
+    font-size: .8rem;
+    color: rgba(34,39,62,.6);
+    line-height: 1.55;
+  }
+  /* animated dot flowing across mode card */
+  .mode-flow {
+    margin-top: 1rem;
+    height: 4px;
+    background: rgba(92,158,171,.12);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .mode-flow::after {
+    content: '';
+    position: absolute;
+    left: -20%;
+    top: 0; bottom: 0;
+    width: 20%;
+    background: linear-gradient(90deg, transparent, var(--pacific), transparent);
+    animation: flow 2s ease-in-out infinite;
+  }
+  .mode-card.lstm-mode .mode-flow::after {
+    animation-delay: .4s;
+    background: linear-gradient(90deg, transparent, var(--aqua), transparent);
+  }
+  @keyframes flow { 0% { left: -20%; } 100% { left: 110%; } }
+
+  /* ── AUGMENTATION ── */
+  .aug-count-row {
+    display: flex; align-items: center; gap: 2rem;
+    background: var(--indigo);
+    border-radius: var(--radius);
+    padding: 2rem 2.5rem;
+    margin-bottom: 2rem;
+  }
+  .aug-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.6rem;
+    color: var(--aqua);
+    white-space: nowrap;
+  }
+  .aug-arrow {
+    font-size: 1.5rem;
+    color: var(--pacific);
+    flex-shrink: 0;
+  }
+  .aug-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .65rem;
+    color: rgba(156,210,209,.55);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-top: .2rem;
+  }
+  .aug-techniques {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;
+    margin-bottom: 2rem;
+  }
+  .aug-tech-card {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 1.6rem;
+  }
+  .aug-tech-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1rem;
+    color: var(--indigo);
+    margin-bottom: .5rem;
+  }
+  .aug-tech-sub {
+    font-size: .8rem;
+    color: rgba(34,39,62,.6);
+    line-height: 1.55;
+  }
+  /* animated waveform */
+  .wave-anim {
+    margin-top: 1rem;
+    height: 32px;
+    display: flex; align-items: center; gap: 2px;
+  }
+  .wave-bar {
+    flex: 1;
+    background: var(--pacific);
+    border-radius: 1px;
+    opacity: .5;
+  }
+
+  .pipeline-img-wrap {
+    border-radius: var(--radius);
+    border: 1px solid rgba(92,158,171,.18);
+    overflow: hidden;
+    background: white;
+    display: flex; justify-content: center;
+    padding: 1.5rem;
+  }
+  .pipeline-img-wrap img {
+    max-height: 560px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+
+  .leakage-note {
+    background: rgba(34,39,62,.04);
+    border-left: 3px solid var(--pacific);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 1.2rem 1.5rem;
+    font-size: .85rem;
+    color: rgba(34,39,62,.75);
+    line-height: 1.6;
+    margin-top: 2rem;
+  }
+  .leakage-note strong { color: var(--indigo); font-weight: 500; }
+
+  /* ── DATA PREPARATION ── */
+  .split-visual {
+    display: flex; gap: 0;
+    height: 56px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 1.2rem;
+    border: 1px solid rgba(92,158,171,.2);
+  }
+  .split-seg {
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: .2rem;
+  }
+  .split-seg.train { flex: 70; background: var(--indigo); }
+  .split-seg.val   { flex: 10; background: rgba(92,158,171,.5); }
+  .split-seg.test  { flex: 20; background: rgba(156,210,209,.5); }
+  .split-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: .65rem;
+    font-weight: 500;
+    color: white;
+  }
+  .split-lbl {
+    font-family: 'DM Mono', monospace;
+    font-size: .52rem;
+    color: rgba(255,255,255,.65);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .split-counts {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .split-count-card {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 1.2rem 1rem;
+    text-align: center;
+  }
+  .split-count-n {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    color: var(--indigo);
+    line-height: 1;
+    margin-bottom: .3rem;
+  }
+  .split-count-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .62rem;
+    color: var(--pacific);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .split-count-pct {
+    font-size: .75rem;
+    color: rgba(34,39,62,.45);
+    margin-top: .15rem;
+  }
+
+  /* dimension fork */
+  .dim-fork {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 2rem;
+    margin-top: 2rem;
+  }
+  .dim-fork-title {
+    font-family: 'DM Mono', monospace;
+    font-size: .66rem;
+    color: var(--pacific);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+  .dim-fork-title::before { content: '// '; }
+  .fork-row {
+    display: flex; align-items: center; gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .fork-source {
+    background: var(--indigo);
+    color: var(--aqua);
+    font-family: 'DM Mono', monospace;
+    font-size: .78rem;
+    padding: .8rem 1.2rem;
+    border-radius: var(--radius);
+    white-space: nowrap;
+  }
+  .fork-lines {
+    display: flex; flex-direction: column; gap: .6rem; flex-shrink: 0;
+  }
+  .fork-line {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .75rem; color: rgba(34,39,62,.55);
+    font-family: 'DM Mono', monospace;
+  }
+  .fork-line::before { content: '→'; color: var(--pacific); }
+  .fork-dest {
+    padding: .7rem 1.1rem;
+    border-radius: var(--radius);
+    font-family: 'DM Mono', monospace;
+    font-size: .78rem;
+    font-weight: 500;
+    border: 1px solid rgba(92,158,171,.25);
+  }
+  .fork-dest.cnn  { background: rgba(92,158,171,.08);  color: var(--indigo); }
+  .fork-dest.lstm { background: rgba(156,210,209,.12); color: var(--indigo); }
+  /* animated dot on fork */
+  .fork-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--pacific);
+    animation: dotBounce 1.8s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  .fork-dot.lstm { animation-delay: .5s; background: var(--aqua); }
+  @keyframes dotBounce {
+    0%, 100% { opacity: .3; transform: scale(.8); }
+    50%       { opacity: 1;  transform: scale(1.2); }
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity .5s ease, transform .5s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--indigo);
+    border-top: 1px solid rgba(156,210,209,.1);
+    padding: 2rem 2.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-left {
+    font-family: 'DM Mono', monospace;
+    font-size: .63rem;
+    color: rgba(156,210,209,.45);
+    letter-spacing: .07em; line-height: 1.7;
+  }
+  .footer-right a {
+    font-family: 'DM Mono', monospace; font-size: .66rem;
+    color: var(--pacific); text-decoration: none;
+    border-bottom: 1px solid rgba(92,158,171,.3);
+    transition: border-color .2s;
+  }
+  .footer-right a:hover { border-color: var(--pacific); }
+
+  @media (max-width: 900px) {
+    .two-col, .three-col, .mode-compare, .aug-techniques, .split-counts { grid-template-columns: 1fr; }
+    .viz-grid { grid-template-columns: 1fr; }
+    .aug-count-row { flex-direction: column; gap: 1rem; text-align: center; }
+    nav { padding: 0 1rem; }
+    .jump-link { padding: .4rem .6rem; font-size: .58rem; }
+    .presenter-header { flex-direction: column; }
+    .section-body { padding: 2rem 1.4rem 3rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-back" href="index.html">← Back to overview</a>
+  <div class="jump-nav">
+    <a class="jump-link active" href="#feature-extraction">Feature Extraction</a>
+    <a class="jump-link" href="#augmentation">Augmentation</a>
+    <a class="jump-link" href="#data-preparation">Data Preparation</a>
+  </div>
+</nav>
+
+<!-- PAGE HERO -->
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="page-label">Pipeline · Three stages</div>
+    <h1>From raw audio to<br><em>model inputs</em></h1>
+    <p>Each of the three sections below covers a distinct stage of the data pipeline, presented separately for clarity.</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     SECTION A — FEATURE EXTRACTION
+════════════════════════════════════ -->
+<section class="presenter-section" id="feature-extraction">
+  <div class="presenter-header">
+    <div class="presenter-header-left">
+      <div class="section-tag"><span class="section-num">A</span> Section one</div>
+      <h2>Feature <em>Extraction</em></h2>
+      <p class="section-desc">Transforming raw waveforms into structured numerical representations that capture the acoustic properties of emotion.</p>
+    </div>
+  </div>
+
+  <div class="section-body">
+
+    <!-- Preprocessing steps -->
+    <p class="card-title" style="margin-bottom:1rem;">// Preprocessing pipeline — applied to every clip</p>
+    <div class="steps-row reveal">
+      <div class="step-block">
+        <div class="step-num">01</div>
+        <div class="step-title">Load at 22,050 Hz</div>
+        <div class="step-detail">All clips resampled to a fixed sample rate for consistent frame lengths.</div>
+      </div>
+      <div class="step-block">
+        <div class="step-num">02</div>
+        <div class="step-title">VAD Trim</div>
+        <div class="step-detail">Leading and trailing silence removed at a 30 dB threshold below peak amplitude.</div>
+      </div>
+      <div class="step-block">
+        <div class="step-num">03</div>
+        <div class="step-title">Amplitude Normalise</div>
+        <div class="step-detail">Signal scaled to [−1, 1] so energy levels are comparable across speakers.</div>
+      </div>
+      <div class="step-block">
+        <div class="step-num">04</div>
+        <div class="step-title">Extract Features</div>
+        <div class="step-detail">Five feature types computed; mode determines output shape (CNN or LSTM).</div>
+      </div>
+    </div>
+
+    <!-- Visualisation panels (4-up from data_sample_prep.png) -->
+    <p class="card-title" style="margin-bottom:1rem;margin-top:2.5rem;">// Audio overview — RAVDESS sample (emotion: Surprised)</p>
+    <div class="viz-grid reveal">
+      <div class="viz-panel">
+        <div class="viz-panel-header">
+          <span class="viz-panel-title">Waveplot</span>
+          <span class="viz-panel-badge">time domain · amplitude</span>
+        </div>
+        <!-- JS will crop and render the quadrant -->
+        <canvas id="vizWave" width="500" height="200" style="width:100%;display:block;"></canvas>
+        <div class="viz-panel-note">Raw amplitude over time. Silence-trimmed region visible — emotional content is concentrated in the central burst.</div>
+      </div>
+      <div class="viz-panel">
+        <div class="viz-panel-header">
+          <span class="viz-panel-title">Mel Spectrogram</span>
+          <span class="viz-panel-badge">256 bins · time-frequency</span>
+        </div>
+        <img src="assets/data_sample_prep_melspec.png" alt="Mel Spectrogram" id="imgMelSpec"
+             onerror="this.style.display='none';document.getElementById('melFallback').style.display='block'">
+        <div id="melFallback" style="display:none;padding:1rem;font-size:.78rem;color:rgba(34,39,62,.5);">
+          Place <code>data_sample_prep.png</code> in <code>web/assets/</code> — the full image will appear here split into 4 panels.
+        </div>
+        <div class="viz-panel-note">Full time-frequency energy map on the mel scale. 256-dim mean+std vector fed to CNN models.</div>
+      </div>
+      <div class="viz-panel">
+        <div class="viz-panel-header">
+          <span class="viz-panel-title">MFCC</span>
+          <span class="viz-panel-badge">40 coefficients × time</span>
+        </div>
+        <img src="assets/data_sample_prep_mfcc.png" alt="MFCC" id="imgMFCC"
+             onerror="this.style.display='none';document.getElementById('mfccFallback').style.display='block'">
+        <div id="mfccFallback" style="display:none;padding:1rem;font-size:.78rem;color:rgba(34,39,62,.5);">
+          Crop the lower-left quadrant of <code>data_sample_prep.png</code> and save as <code>data_sample_prep_mfcc.png</code>.
+        </div>
+        <div class="viz-panel-note">Mel-frequency cepstral coefficients encode vocal tract shape. Mean+std of coefficients 0–39 contribute 80 dimensions.</div>
+      </div>
+      <div class="viz-panel">
+        <div class="viz-panel-header">
+          <span class="viz-panel-title">Chromagram</span>
+          <span class="viz-panel-badge">12 pitch classes · time</span>
+        </div>
+        <img src="assets/data_sample_prep_chroma.png" alt="Chromagram" id="imgChroma"
+             onerror="this.style.display='none';document.getElementById('chromaFallback').style.display='block'">
+        <div id="chromaFallback" style="display:none;padding:1rem;font-size:.78rem;color:rgba(34,39,62,.5);">
+          Crop the lower-right quadrant and save as <code>data_sample_prep_chroma.png</code>.
+        </div>
+        <div class="viz-panel-note">Pitch-class energy distribution across 12 semitones. Mean+std contributes 24 dimensions to the feature vector.</div>
+      </div>
+    </div>
+
+    <!-- Full image fallback note -->
+    <div class="leakage-note reveal" style="border-color:var(--aqua);margin-top:0;margin-bottom:2rem;">
+      <strong>Image setup note:</strong> Copy <code>data_sample_prep.png</code> into <code>web/assets/</code>. For the best 4-panel layout, also crop the image into four quadrants (top-left, top-right, bottom-left, bottom-right) and save them as <code>data_sample_prep_wave.png</code>, <code>data_sample_prep_melspec.png</code>, <code>data_sample_prep_mfcc.png</code>, and <code>data_sample_prep_chroma.png</code> in the same folder. Alternatively, keep the full image and it will be shown in the MFCC panel with all four visible.
+    </div>
+
+    <!-- 524-dim feature table + CNN vs LSTM -->
+    <div class="two-col">
+      <div class="reveal">
+        <p class="card-title" style="margin-bottom:1rem;">// The 524-dimensional feature vector</p>
+        <table class="feature-table">
+          <thead>
+            <tr>
+              <th>Feature group</th>
+              <th>Description</th>
+              <th>Dims</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="ft-name">MFCCs</td>
+              <td>Mean + Std of 40 coefficients</td>
+              <td class="ft-dim">80</td>
+            </tr>
+            <tr>
+              <td class="ft-name">Deltas</td>
+              <td>Velocity of MFCCs — mean + std</td>
+              <td class="ft-dim">80</td>
+            </tr>
+            <tr>
+              <td class="ft-name">Delta-Deltas</td>
+              <td>Acceleration of MFCCs — mean + std</td>
+              <td class="ft-dim">80</td>
+            </tr>
+            <tr>
+              <td class="ft-name">Mel-Spectrogram</td>
+              <td>Mean + Std across 128 mel bands</td>
+              <td class="ft-dim">256</td>
+            </tr>
+            <tr>
+              <td class="ft-name">Chroma</td>
+              <td>Mean + Std of 12 pitch classes</td>
+              <td class="ft-dim">24</td>
+            </tr>
+            <tr>
+              <td class="ft-name">RMS Energy</td>
+              <td>Mean + Std of frame energy</td>
+              <td class="ft-dim">2</td>
+            </tr>
+            <tr>
+              <td class="ft-name">ZCR</td>
+              <td>Mean + Std of zero-crossing rate</td>
+              <td class="ft-dim">2</td>
+            </tr>
+            <tr class="ft-total">
+              <td colspan="2"><strong>Total vector length</strong></td>
+              <td>524</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="reveal">
+        <p class="card-title" style="margin-bottom:1rem;">// Architectural distinction — two input modes</p>
+        <div class="mode-compare" style="grid-template-columns:1fr;gap:1rem;">
+          <div class="mode-card cnn-mode">
+            <div class="mode-label">CNN mode</div>
+            <div class="mode-shape">(N, 524, 1)</div>
+            <div class="mode-desc">Statistical compression: each feature type is summarised as mean + std across all frames, discarding temporal order. A flat vector reshaped for 1D convolution.</div>
+            <div class="mode-flow"></div>
+          </div>
+          <div class="mode-card lstm-mode">
+            <div class="mode-label">BiLSTM mode</div>
+            <div class="mode-shape">(N, 130, 120)</div>
+            <div class="mode-desc">Temporal preservation: 130 analysis frames (~23 ms each), each containing 40 MFCCs + 40 Deltas + 40 Delta-Deltas = 120 features. No statistical compression.</div>
+            <div class="mode-flow"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════
+     SECTION B — DATA AUGMENTATION
+════════════════════════════════════ -->
+<section class="presenter-section" id="augmentation">
+  <div class="presenter-header">
+    <div class="presenter-header-left">
+      <div class="section-tag"><span class="section-num">B</span> Section two</div>
+      <h2>Data <em>Augmentation</em></h2>
+      <p class="section-desc">Artificially expanding the dataset from 2,880 to 8,640 recordings before any splitting to prevent data leakage.</p>
+    </div>
+  </div>
+
+  <div class="section-body">
+
+    <!-- Count banner -->
+    <div class="aug-count-row reveal">
+      <div>
+        <div class="aug-num">2,880</div>
+        <div class="aug-label">original recordings</div>
+      </div>
+      <div class="aug-arrow">→</div>
+      <div>
+        <div class="aug-num">8,640</div>
+        <div class="aug-label">after augmentation (3×)</div>
+      </div>
+      <div style="margin-left:auto;text-align:right;max-width:280px;">
+        <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:rgba(156,210,209,.55);letter-spacing:.08em;margin-bottom:.4rem;">EACH RECORDING PRODUCES</div>
+        <div style="font-size:.88rem;color:rgba(156,210,209,.8);line-height:1.55;">
+          1 original + 1 Gaussian-noise copy + 1 time-shifted copy
+        </div>
+      </div>
+    </div>
+
+    <!-- Techniques -->
+    <div class="aug-techniques reveal">
+      <div class="aug-tech-card">
+        <div class="aug-tech-title">Gaussian Noise Injection</div>
+        <div class="aug-tech-sub">Adds random low-amplitude noise sampled from a Gaussian distribution to the raw waveform. Simulates real-world recording imperfections — microphone hiss, ambient noise, HVAC hum. Prevents the model from memorising exact amplitude patterns present in the studio recordings.</div>
+        <!-- animated bars -->
+        <div class="wave-anim" id="waveNoise"></div>
+      </div>
+      <div class="aug-tech-card">
+        <div class="aug-tech-title">Time-Shifting</div>
+        <div class="aug-tech-sub">Wraps the waveform by a random offset — samples that fall off one end reappear at the other. Exploits the fact that the emotional acoustic content in RAVDESS is position-independent: the utterance sounds the same whether it starts at 0.0s or 0.4s. Forces the model to attend to spectral shape rather than temporal position.</div>
+        <div class="wave-anim" id="waveShift"></div>
+      </div>
+    </div>
+
+    <!-- Data leakage note -->
+    <div class="leakage-note reveal">
+      <strong>Why augmentation precedes splitting:</strong> applying augmentation after the train/val/test split would risk leaking augmented variants of training clips into the validation or test sets. By augmenting first on the full 2,880-clip corpus and splitting afterwards, augmented samples are distributed proportionally across all three subsets, maintaining strict evaluation integrity.
+    </div>
+
+    <!-- Pipeline flowchart -->
+    <div style="margin-top:2.5rem;" class="reveal">
+      <p class="card-title" style="margin-bottom:1rem;">// Full pipeline flowchart</p>
+      <div class="pipeline-img-wrap">
+        <img src="assets/audio_pipeline_flowchart.png"
+             alt="Audio processing pipeline flowchart"
+             onerror="this.outerHTML='<p style=\'padding:2rem;font-size:.85rem;color:rgba(34,39,62,.5);text-align:center;\'>Copy <code>Audio_Processing_Pipeline*.png</code> to <code>web/assets/audio_pipeline_flowchart.png</code></p>'">
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ════════════════════════════════════
+     SECTION C — DATA PREPARATION
+════════════════════════════════════ -->
+<section class="presenter-section" id="data-preparation">
+  <div class="presenter-header">
+    <div class="presenter-header-left">
+      <div class="section-tag"><span class="section-num">C</span> Section three</div>
+      <h2>Data <em>Preparation</em></h2>
+      <p class="section-desc">Splitting, scaling, and reshaping the augmented dataset into the exact tensor shapes each architecture expects.</p>
+    </div>
+  </div>
+
+  <div class="section-body">
+
+    <!-- Split visual -->
+    <p class="card-title" style="margin-bottom:1rem;">// Train / Validation / Test split — 70 / 10 / 20</p>
+    <div class="split-visual reveal">
+      <div class="split-seg train">
+        <span class="split-pct">70%</span>
+        <span class="split-lbl">Train</span>
+      </div>
+      <div class="split-seg val">
+        <span class="split-pct">10%</span>
+        <span class="split-lbl">Val</span>
+      </div>
+      <div class="split-seg test">
+        <span class="split-pct">20%</span>
+        <span class="split-lbl">Test</span>
+      </div>
+    </div>
+
+    <div class="split-counts reveal">
+      <div class="split-count-card">
+        <div class="split-count-n">6,048</div>
+        <div class="split-count-label">Training samples</div>
+        <div class="split-count-pct">70% of 8,640</div>
+      </div>
+      <div class="split-count-card">
+        <div class="split-count-n">864</div>
+        <div class="split-count-label">Validation samples</div>
+        <div class="split-count-pct">10% of 8,640</div>
+      </div>
+      <div class="split-count-card">
+        <div class="split-count-n">1,728</div>
+        <div class="split-count-label">Test samples (held-out)</div>
+        <div class="split-count-pct">20% of 8,640</div>
+      </div>
+    </div>
+
+    <!-- Scaler note -->
+    <div class="two-col reveal">
+      <div class="card">
+        <div class="card-title">StandardScaler — fitted on training data only</div>
+        <p style="font-size:.85rem;color:rgba(34,39,62,.7);line-height:1.6;">The scaler computes mean and standard deviation from the 6,048 training samples and applies the same transform to validation and test sets. This is a strict requirement — fitting on all data would constitute a form of data leakage and artificially inflate test performance.</p>
+        <p style="font-size:.82rem;color:rgba(34,39,62,.55);margin-top:.8rem;line-height:1.5;">Two separate scalers are maintained: <code>scaler_cnn_aug</code> for the flat 524-dim vector, and <code>scaler_lstm_aug</code> for the flattened frame-level features (reshaped to (N×130, 120) before fitting, then restored).</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Fixed test split — evaluation integrity</div>
+        <p style="font-size:.85rem;color:rgba(34,39,62,.7);line-height:1.6;">The 1,728-sample test set is separated before any model training begins and never used for any hyperparameter decisions. All six models (three architectures × two training regimes) are evaluated on this identical held-out set, ensuring fair comparison across architectures.</p>
+        <p style="font-size:.82rem;color:rgba(34,39,62,.55);margin-top:.8rem;line-height:1.5;">A fixed random seed guarantees reproducible splits. The split is performed stratified by emotion class to preserve the balanced distribution of RAVDESS.</p>
+      </div>
+    </div>
+
+    <!-- Dimension fork -->
+    <div class="dim-fork reveal">
+      <div class="dim-fork-title">Tensor shape fork — same data, two representations</div>
+      <div class="fork-row">
+        <div class="fork-source">8,640 clips<br><span style="font-size:.6em;opacity:.6;">augmented · scaled</span></div>
+
+        <div class="fork-lines">
+          <div class="fork-line">
+            <div class="fork-dot"></div>
+            CNN-A &amp; CNN-B &rarr;
+          </div>
+          <div class="fork-line">
+            <div class="fork-dot lstm"></div>
+            BiLSTM &rarr;
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:.8rem;">
+          <div class="fork-dest cnn">
+            (N, 524, 1)
+            <div style="font-size:.65rem;font-weight:300;color:rgba(34,39,62,.5);margin-top:.2rem;">flat statistical vector, channel dim added for Conv1D</div>
+          </div>
+          <div class="fork-dest lstm">
+            (N, 130, 120)
+            <div style="font-size:.65rem;font-weight:300;color:rgba(34,39,62,.5);margin-top:.2rem;">frame-level sequence — 130 frames, 120 features each</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    MAI 604 · Deep Learning · Canadian University Dubai · 2026<br>
+    Farnaz Azarparand · Rajeev Pandey · Hussein Aboueldahab
+  </div>
+  <div class="footer-right">
+    <a href="https://github.com/Farnaz4649/Speech_Emotion_Recognition_DL" target="_blank">github.com/Farnaz4649/Speech_Emotion_Recognition_DL</a>
+  </div>
+</footer>
+
+<script>
+/* ── SCROLL REVEAL ── */
+const obs = new IntersectionObserver(entries =>
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }),
+  { threshold: .1 }
+);
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+/* ── JUMP NAV ACTIVE STATE ── */
+const sections = ['feature-extraction','augmentation','data-preparation'];
+const jumpLinks = document.querySelectorAll('.jump-link');
+window.addEventListener('scroll', () => {
+  let current = sections[0];
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && window.scrollY >= el.offsetTop - 100) current = id;
+  });
+  jumpLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}, { passive: true });
+
+/* ── ANIMATED WAVE BARS ── */
+function buildWave(containerId, noisy) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const count = 40;
+  for (let i = 0; i < count; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'wave-bar';
+    const baseH = 6 + Math.abs(Math.sin(i * 0.4)) * 22;
+    bar.style.height = baseH + 'px';
+    bar.style.animationDelay = (i * 0.04) + 's';
+    bar.style.animation = `waveAnim${noisy ? 'N' : 'S'} ${0.6 + Math.random()*0.4}s ease-in-out infinite alternate`;
+    container.appendChild(bar);
+  }
+}
+
+const styleEl = document.createElement('style');
+styleEl.textContent = `
+  @keyframes waveAnimN {
+    from { transform: scaleY(1); opacity:.4; }
+    to   { transform: scaleY(${1 + Math.random().toFixed(2)}); opacity:.8; }
+  }
+  @keyframes waveAnimS {
+    from { transform: scaleY(0.9) translateX(0); }
+    to   { transform: scaleY(1.1) translateX(3px); }
+  }
+`;
+document.head.appendChild(styleEl);
+
+buildWave('waveNoise', true);
+buildWave('waveShift', false);
+</script>
+</body>
+</html>

@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speech Emotion Recognition — MAI 604</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --indigo:  #22273e;
+    --pacific: #5c9eab;
+    --aqua:    #9ad2d1;
+    --blush:   #e2d7da;
+    --salmon:  #e09079;
+    --radius:  6px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--blush);
+    color: var(--indigo);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--indigo);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5rem;
+    height: 52px;
+    border-bottom: 1px solid rgba(156,210,209,.15);
+  }
+  nav .brand {
+    font-family: 'DM Mono', monospace;
+    font-size: .72rem;
+    color: var(--aqua);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  nav ul {
+    list-style: none;
+    display: flex; gap: 2rem;
+  }
+  nav ul a {
+    font-family: 'DM Mono', monospace;
+    font-size: .68rem;
+    color: rgba(156,210,209,.7);
+    text-decoration: none;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    transition: color .2s;
+  }
+  nav ul a:hover { color: var(--aqua); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 92vh;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 6rem 2.5rem 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 60% at 80% 40%, rgba(92,158,171,.09) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 40% at 15% 70%, rgba(34,39,62,.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  /* subtle grid */
+  .hero::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(92,158,171,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(92,158,171,.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  .hero-inner { position: relative; z-index: 1; max-width: 820px; }
+
+  .hero-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .7rem;
+    color: var(--pacific);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin-bottom: 1.4rem;
+    opacity: 0;
+    animation: fadeUp .6s .1s forwards;
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2.8rem, 6vw, 5rem);
+    line-height: 1.08;
+    color: var(--indigo);
+    margin-bottom: 1.4rem;
+    opacity: 0;
+    animation: fadeUp .6s .2s forwards;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--salmon);
+  }
+
+  .tagline {
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: var(--indigo);
+    opacity: .75;
+    max-width: 560px;
+    margin-bottom: 2.4rem;
+    opacity: 0;
+    animation: fadeUp .6s .3s forwards;
+  }
+
+  .hero-meta {
+    display: flex; flex-wrap: wrap; gap: 2rem;
+    opacity: 0;
+    animation: fadeUp .6s .4s forwards;
+  }
+  .meta-group { display: flex; flex-direction: column; gap: .15rem; }
+  .meta-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .62rem;
+    color: var(--pacific);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .meta-value {
+    font-size: .88rem;
+    font-weight: 500;
+    color: var(--indigo);
+  }
+  .meta-value a {
+    color: var(--pacific);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(92,158,171,.3);
+    transition: border-color .2s;
+  }
+  .meta-value a:hover { border-color: var(--pacific); }
+
+  /* authors inline */
+  .authors-row {
+    margin-top: 2.4rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid rgba(92,158,171,.2);
+    display: flex; flex-wrap: wrap; gap: 1.8rem;
+    opacity: 0;
+    animation: fadeUp .6s .5s forwards;
+  }
+  .author-chip {
+    display: flex; flex-direction: column; gap: .1rem;
+  }
+  .author-name {
+    font-size: .9rem; font-weight: 500; color: var(--indigo);
+  }
+  .author-id {
+    font-family: 'DM Mono', monospace;
+    font-size: .65rem;
+    color: var(--pacific);
+    letter-spacing: .06em;
+  }
+
+  /* ── STAT STRIP ── */
+  .stat-strip {
+    background: var(--indigo);
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+  }
+  .stat-cell {
+    padding: 2.4rem 1.8rem;
+    border-right: 1px solid rgba(156,210,209,.1);
+    display: flex; flex-direction: column; gap: .5rem;
+    position: relative;
+    overflow: hidden;
+    transition: background .3s;
+  }
+  .stat-cell:last-child { border-right: none; }
+  .stat-cell:hover { background: rgba(92,158,171,.06); }
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.8rem, 3vw, 2.6rem);
+    color: var(--aqua);
+    line-height: 1;
+  }
+  .stat-num sup {
+    font-size: .55em;
+    vertical-align: super;
+  }
+  .stat-desc {
+    font-family: 'DM Mono', monospace;
+    font-size: .64rem;
+    color: rgba(156,210,209,.6);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+  .stat-cell::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 0; height: 2px;
+    background: var(--pacific);
+    transition: width .4s;
+  }
+  .stat-cell:hover::after { width: 100%; }
+
+  /* ── SECTION WRAPPER ── */
+  section {
+    padding: 5rem 2.5rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .68rem;
+    color: var(--pacific);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+  }
+  .section-label::before { content: '// '; }
+
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    color: var(--indigo);
+    margin-bottom: 1rem;
+    line-height: 1.15;
+  }
+  h2 em { font-style: italic; color: var(--pacific); }
+
+  .section-intro {
+    font-size: 1rem;
+    font-weight: 300;
+    color: rgba(34,39,62,.72);
+    max-width: 640px;
+    margin-bottom: 3rem;
+  }
+
+  /* ── PIPELINE CARDS ── */
+  .pipeline-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.2rem;
+  }
+
+  .pipeline-card {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 1.8rem;
+    text-decoration: none;
+    color: inherit;
+    display: flex; flex-direction: column; gap: .8rem;
+    position: relative;
+    overflow: hidden;
+    transition: transform .25s, box-shadow .25s, border-color .25s;
+    cursor: pointer;
+  }
+  .pipeline-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--pacific);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform .3s;
+  }
+  .pipeline-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(34,39,62,.1);
+    border-color: rgba(92,158,171,.4);
+  }
+  .pipeline-card:hover::before { transform: scaleX(1); }
+
+  .card-number {
+    font-family: 'DM Mono', monospace;
+    font-size: .62rem;
+    color: rgba(92,158,171,.5);
+    letter-spacing: .1em;
+  }
+  .card-icon {
+    font-size: 1.6rem;
+    line-height: 1;
+  }
+  .card-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    color: var(--indigo);
+    line-height: 1.2;
+  }
+  .card-sub {
+    font-size: .8rem;
+    color: rgba(34,39,62,.55);
+    font-weight: 300;
+    line-height: 1.5;
+  }
+  .card-arrow {
+    margin-top: auto;
+    font-size: .75rem;
+    color: var(--pacific);
+    font-family: 'DM Mono', monospace;
+    display: flex; align-items: center; gap: .4rem;
+    transition: gap .2s;
+  }
+  .pipeline-card:hover .card-arrow { gap: .7rem; }
+
+  /* ── RESULTS TABLE ── */
+  .results-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius);
+    border: 1px solid rgba(92,158,171,.18);
+    margin-bottom: 3.5rem;
+  }
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: .88rem;
+    background: white;
+  }
+  th {
+    background: var(--indigo);
+    color: var(--aqua);
+    font-family: 'DM Mono', monospace;
+    font-size: .65rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .9rem 1.2rem;
+    text-align: left;
+    font-weight: 400;
+  }
+  td {
+    padding: .85rem 1.2rem;
+    border-bottom: 1px solid rgba(92,158,171,.1);
+    color: var(--indigo);
+    font-weight: 300;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(92,158,171,.04); }
+
+  .td-model { font-weight: 500; }
+  .td-regime {
+    font-family: 'DM Mono', monospace;
+    font-size: .75rem;
+    color: var(--pacific);
+  }
+  .td-acc { font-family: 'DM Mono', monospace; font-weight: 500; }
+  .td-best { color: var(--salmon); font-weight: 600; }
+
+  .best-row td { background: rgba(224,144,121,.04); }
+
+  /* delta badge */
+  .delta {
+    font-family: 'DM Mono', monospace;
+    font-size: .72rem;
+    padding: .15rem .45rem;
+    border-radius: 3px;
+    background: rgba(92,158,171,.12);
+    color: var(--pacific);
+    white-space: nowrap;
+  }
+  .delta-high { background: rgba(156,210,209,.18); color: var(--indigo); }
+
+  /* ── CHARTS ── */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+  .chart-card {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 1.8rem;
+  }
+  .chart-title {
+    font-family: 'DM Mono', monospace;
+    font-size: .68rem;
+    color: var(--pacific);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+  }
+  .chart-title::before { content: '// '; }
+
+  /* ── CROSS-DATASET ── */
+  .cross-grid {
+    display: grid;
+    grid-template-columns: 2fr 3fr;
+    gap: 2rem;
+    align-items: start;
+  }
+  .callout-box {
+    background: var(--indigo);
+    border-radius: var(--radius);
+    padding: 2rem;
+    color: white;
+  }
+  .callout-box .callout-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .62rem;
+    color: var(--aqua);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: .8rem;
+  }
+  .callout-box .callout-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    color: var(--salmon);
+    margin-bottom: .8rem;
+    line-height: 1.2;
+  }
+  .callout-box p {
+    font-size: .85rem;
+    font-weight: 300;
+    color: rgba(226,215,218,.75);
+    line-height: 1.65;
+  }
+  .callout-box .silver-note {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(156,210,209,.2);
+    font-size: .8rem;
+    color: var(--aqua);
+  }
+
+  /* ── TAKEAWAYS ── */
+  .takeaways-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.2rem;
+  }
+  .takeaway-card {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 1.8rem;
+  }
+  .takeaway-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.4rem;
+    color: rgba(92,158,171,.18);
+    line-height: 1;
+    margin-bottom: .6rem;
+  }
+  .takeaway-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.05rem;
+    color: var(--indigo);
+    margin-bottom: .6rem;
+    line-height: 1.25;
+  }
+  .takeaway-body {
+    font-size: .83rem;
+    font-weight: 300;
+    color: rgba(34,39,62,.65);
+    line-height: 1.6;
+  }
+
+  /* ── LIMITATIONS / FUTURE ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .list-card {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 2rem;
+  }
+  .list-card h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.15rem;
+    color: var(--indigo);
+    margin-bottom: 1.2rem;
+  }
+  .icon-list { list-style: none; display: flex; flex-direction: column; gap: .9rem; }
+  .icon-list li {
+    display: flex; gap: .8rem; align-items: flex-start;
+    font-size: .85rem; font-weight: 300; color: rgba(34,39,62,.75);
+    line-height: 1.55;
+  }
+  .icon-list li .icon {
+    flex-shrink: 0;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: rgba(92,158,171,.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem;
+    color: var(--pacific);
+    margin-top: .1rem;
+  }
+  .icon-list li .icon-future {
+    flex-shrink: 0;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: rgba(34,39,62,.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem;
+    color: var(--indigo);
+    margin-top: .1rem;
+  }
+
+  /* ── LIVE DEMO ── */
+  #demo { background: var(--indigo); padding: 5rem 2.5rem; }
+  .demo-inner { max-width: 1100px; margin: 0 auto; }
+
+  .demo-tabs {
+    display: flex; gap: 0;
+    margin-bottom: 2.4rem;
+    background: rgba(255,255,255,.06);
+    border-radius: var(--radius);
+    padding: .3rem;
+    width: fit-content;
+  }
+  .tab-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: .75rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .6rem 1.6rem;
+    border: none;
+    background: transparent;
+    color: rgba(156,210,209,.6);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background .2s, color .2s;
+  }
+  .tab-btn.active {
+    background: var(--pacific);
+    color: white;
+  }
+
+  .demo-panel { display: none; }
+  .demo-panel.active { display: block; }
+
+  /* audio cards grid */
+  .audio-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .9rem;
+    margin-bottom: 2rem;
+  }
+  .audio-card {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(156,210,209,.15);
+    border-radius: var(--radius);
+    padding: 1.2rem 1rem;
+    display: flex; flex-direction: column; gap: .5rem;
+    align-items: center; text-align: center;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, transform .15s;
+    position: relative;
+  }
+  .audio-card:hover {
+    background: rgba(92,158,171,.12);
+    border-color: rgba(92,158,171,.4);
+    transform: translateY(-2px);
+  }
+  .audio-card.selected {
+    background: rgba(92,158,171,.18);
+    border-color: var(--pacific);
+  }
+  .audio-card.playing {
+    border-color: var(--aqua);
+  }
+  .emotion-emoji { font-size: 1.6rem; }
+  .emotion-label {
+    font-family: 'DM Mono', monospace;
+    font-size: .65rem;
+    color: var(--aqua);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .audio-filename {
+    font-size: .65rem;
+    color: rgba(156,210,209,.45);
+    font-family: 'DM Mono', monospace;
+  }
+  .play-icon {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(92,158,171,.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem;
+    color: var(--pacific);
+    transition: background .2s;
+  }
+  .audio-card:hover .play-icon,
+  .audio-card.selected .play-icon {
+    background: var(--pacific);
+    color: white;
+    border-color: var(--pacific);
+  }
+
+  /* playing pulse */
+  @keyframes pulse-ring {
+    0%   { transform: scale(1);   opacity: .6; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+  .audio-card.playing::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    border: 2px solid var(--aqua);
+    animation: pulse-ring .9s ease-out infinite;
+    pointer-events: none;
+  }
+
+  /* live record button */
+  .record-area {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 1.4rem;
+    margin-bottom: 2.4rem;
+  }
+  .record-hint {
+    font-size: .85rem;
+    color: rgba(156,210,209,.65);
+    text-align: center;
+    max-width: 420px;
+    font-weight: 300;
+    line-height: 1.6;
+  }
+  .mic-btn {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: var(--pacific);
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem;
+    transition: background .2s, transform .15s, box-shadow .2s;
+    position: relative;
+  }
+  .mic-btn:hover {
+    background: var(--aqua);
+    transform: scale(1.05);
+  }
+  .mic-btn.recording {
+    background: var(--salmon);
+    animation: mic-pulse 1s ease-in-out infinite;
+  }
+  @keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(224,144,121,.5); }
+    50%       { box-shadow: 0 0 0 18px rgba(224,144,121,0); }
+  }
+  .countdown-ring {
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: var(--aqua);
+    display: none;
+  }
+  .mic-btn.recording .countdown-ring {
+    display: block;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .countdown-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 1rem;
+    color: var(--aqua);
+    height: 1.5rem;
+    text-align: center;
+  }
+
+  /* ── PREDICTION OUTPUT ── */
+  .prediction-output {
+    display: none;
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  .prediction-output.visible {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    animation: fadeUp .4s forwards;
+  }
+  .pred-card {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(156,210,209,.15);
+    border-radius: var(--radius);
+    padding: 1.6rem;
+  }
+  .pred-card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: .68rem;
+    color: var(--aqua);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    margin-bottom: .3rem;
+  }
+  .pred-card-title::before { content: '// '; }
+  .pred-top {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    color: white;
+    margin-bottom: 1.2rem;
+    display: flex; align-items: baseline; gap: .5rem;
+  }
+  .pred-top span {
+    font-family: 'DM Mono', monospace;
+    font-size: .8rem;
+    color: var(--aqua);
+  }
+
+  /* small action btns */
+  .demo-action-row {
+    display: flex; gap: .8rem; margin-top: 1.4rem;
+  }
+  .action-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: .68rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .5rem 1.2rem;
+    border-radius: 4px;
+    border: 1px solid rgba(156,210,209,.3);
+    background: transparent;
+    color: var(--aqua);
+    cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .action-btn:hover {
+    background: rgba(92,158,171,.18);
+    color: white;
+  }
+
+  /* loading spinner inside demo */
+  .demo-loading {
+    display: none;
+    flex-direction: column; align-items: center; gap: 1rem;
+    margin-top: 2rem;
+  }
+  .demo-loading.visible { display: flex; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(156,210,209,.2);
+    border-top-color: var(--pacific);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  .loading-text {
+    font-family: 'DM Mono', monospace;
+    font-size: .72rem;
+    color: rgba(156,210,209,.6);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  /* error / fallback */
+  .demo-error {
+    display: none;
+    background: rgba(224,144,121,.12);
+    border: 1px solid rgba(224,144,121,.3);
+    border-radius: var(--radius);
+    padding: 1.2rem 1.6rem;
+    color: var(--salmon);
+    font-size: .85rem;
+    margin-top: 1rem;
+  }
+  .demo-error.visible { display: block; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--indigo);
+    border-top: 1px solid rgba(156,210,209,.1);
+    padding: 2.4rem 2.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-left {
+    font-family: 'DM Mono', monospace;
+    font-size: .65rem;
+    color: rgba(156,210,209,.5);
+    letter-spacing: .07em;
+    line-height: 1.7;
+  }
+  .footer-right a {
+    font-family: 'DM Mono', monospace;
+    font-size: .68rem;
+    color: var(--pacific);
+    text-decoration: none;
+    letter-spacing: .06em;
+    border-bottom: 1px solid rgba(92,158,171,.3);
+    transition: border-color .2s;
+  }
+  .footer-right a:hover { border-color: var(--pacific); }
+
+  /* ── DIVIDER ── */
+  .section-divider {
+    border: none;
+    border-top: 1px solid rgba(92,158,171,.12);
+    margin: 0 2.5rem;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity .55s ease, transform .55s ease;
+  }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .pipeline-grid { grid-template-columns: repeat(2, 1fr); }
+    .stat-strip { grid-template-columns: repeat(3, 1fr); }
+    .stat-cell:nth-child(3) { border-right: none; }
+    .charts-row { grid-template-columns: 1fr; }
+    .cross-grid { grid-template-columns: 1fr; }
+    .takeaways-grid { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    .audio-grid { grid-template-columns: repeat(2, 1fr); }
+    .prediction-output.visible { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    nav ul { display: none; }
+    .pipeline-grid { grid-template-columns: 1fr; }
+    .stat-strip { grid-template-columns: repeat(2, 1fr); }
+    h1 { font-size: 2.4rem; }
+    section { padding: 3.5rem 1.4rem; }
+    footer { flex-direction: column; gap: 1rem; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="brand">SER · MAI 604</span>
+  <ul>
+    <li><a href="#pipeline">Pipeline</a></li>
+    <li><a href="#results">Results</a></li>
+    <li><a href="#generalisation">Generalisation</a></li>
+    <li><a href="#takeaways">Takeaways</a></li>
+    <li><a href="#demo">Live Demo</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<header class="hero" id="top">
+  <div class="hero-inner">
+    <p class="hero-label">MAI 604 · Deep Learning · Canadian University Dubai · 2026</p>
+    <h1>Speech <em>Emotion</em><br>Recognition</h1>
+    <p class="tagline">A controlled comparative study of CNN and BiLSTM architectures for 8-class emotion classification on the RAVDESS corpus.</p>
+
+    <div class="hero-meta">
+      <div class="meta-group">
+        <span class="meta-label">Course</span>
+        <span class="meta-value">MAI 604 — Deep Learning</span>
+      </div>
+      <div class="meta-group">
+        <span class="meta-label">Institution</span>
+        <span class="meta-value">Canadian University Dubai</span>
+      </div>
+      <div class="meta-group">
+        <span class="meta-label">Dataset</span>
+        <span class="meta-value">RAVDESS · 2,880 recordings · 8 classes</span>
+      </div>
+      <div class="meta-group">
+        <span class="meta-label">Repository</span>
+        <span class="meta-value"><a href="https://github.com/Farnaz4649/Speech_Emotion_Recognition_DL" target="_blank">github.com/Farnaz4649/Speech_Emotion_Recognition_DL</a></span>
+      </div>
+    </div>
+
+    <div class="authors-row">
+      <div class="author-chip">
+        <span class="author-name">Farnaz Azarparand</span>
+        <span class="author-id">20250006588</span>
+      </div>
+      <div class="author-chip">
+        <span class="author-name">Rajeev Pandey</span>
+        <span class="author-id">20250007918</span>
+      </div>
+      <div class="author-chip">
+        <span class="author-name">Hussein Aboueldahab</span>
+        <span class="author-id">20250008083</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- STAT STRIP -->
+<div class="stat-strip">
+  <div class="stat-cell">
+    <span class="stat-num">93.98<sup>%</sup></span>
+    <span class="stat-desc">Best accuracy<br>CNN-B · augmented</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-num">6</span>
+    <span class="stat-desc">Models trained<br>3 architectures × 2 regimes</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-num">524</span>
+    <span class="stat-desc">Feature dimensions<br>per audio clip (CNN mode)</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-num">+7.75<sup>pp</sup></span>
+    <span class="stat-desc">BiLSTM augmentation gain<br>highest of all architectures</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-num">&gt;67<sup>pp</sup></span>
+    <span class="stat-desc">CREMA-D accuracy drop<br>cross-dataset generalisation gap</span>
+  </div>
+</div>
+
+<!-- PIPELINE -->
+<section id="pipeline">
+  <div class="section-label">Pipeline overview</div>
+  <h2>From raw audio<br>to emotion prediction</h2>
+  <p class="section-intro reveal">Six stages transform 2,880 RAVDESS recordings into trained classifiers. Click any stage to explore the full technical detail.</p>
+
+  <div class="pipeline-grid">
+    <a class="pipeline-card reveal" href="pipeline.html#feature-extraction">
+      <span class="card-number">01</span>
+      <span class="card-icon">🎛</span>
+      <div class="card-title">Feature Extraction</div>
+      <div class="card-sub">524-dim statistical vector: MFCCs, Mel-Spectrogram, Chroma, RMS, ZCR. Preprocessed at 22,050 Hz with 30 dB VAD trim.</div>
+      <div class="card-arrow">Explore <span>→</span></div>
+    </a>
+    <a class="pipeline-card reveal" href="pipeline.html#augmentation">
+      <span class="card-number">02</span>
+      <span class="card-icon">🔊</span>
+      <div class="card-title">Data Augmentation</div>
+      <div class="card-sub">Gaussian noise injection and time-shifting expand 2,880 recordings to 8,640 before any splitting.</div>
+      <div class="card-arrow">Explore <span>→</span></div>
+    </a>
+    <a class="pipeline-card reveal" href="pipeline.html#data-preparation">
+      <span class="card-number">03</span>
+      <span class="card-icon">✂️</span>
+      <div class="card-title">Data Preparation</div>
+      <div class="card-sub">70/10/20 train/val/test split (6,048 / 864 / 1,728). StandardScaler fitted on training only. CNNs get (N,524,1), BiLSTM gets (N,130,120).</div>
+      <div class="card-arrow">Explore <span>→</span></div>
+    </a>
+    <a class="pipeline-card reveal" href="cnn_a.html">
+      <span class="card-number">04</span>
+      <span class="card-icon">🧱</span>
+      <div class="card-title">CNN-A · Shallow Baseline</div>
+      <div class="card-sub">3 Conv1D blocks, Flatten(15,872), Dense(128). 2.24M parameters. Prone to overfitting on small datasets.</div>
+      <div class="card-arrow">Explore <span>→</span></div>
+    </a>
+    <a class="pipeline-card reveal" href="cnn_b.html">
+      <span class="card-number">05</span>
+      <span class="card-icon">⚡</span>
+      <div class="card-title">CNN-B · Deep Primary Model</div>
+      <div class="card-sub">4 blocks with BatchNorm + GlobalAvgPool. 365K parameters — 83% fewer than CNN-A. Best in-domain accuracy at 93.98%.</div>
+      <div class="card-arrow">Explore <span>→</span></div>
+    </a>
+    <a class="pipeline-card reveal" href="bilstm.html">
+      <span class="card-number">06</span>
+      <span class="card-icon">🔄</span>
+      <div class="card-title">BiLSTM · Temporal Model</div>
+      <div class="card-sub">Stacked bidirectional LSTM on frame-level sequences (130,120). 437K params. +7.75pp gain from augmentation, strongest cross-domain generaliser.</div>
+      <div class="card-arrow">Explore <span>→</span></div>
+    </a>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- RESULTS -->
+<section id="results">
+  <div class="section-label">Experimental results</div>
+  <h2>All six models,<br>side by side</h2>
+  <p class="section-intro reveal">Both training regimes (plain and augmented) evaluated on the same fixed held-out test split of 1,728 samples.</p>
+
+  <div class="results-wrap reveal">
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Regime</th>
+          <th>Epochs</th>
+          <th>Parameters</th>
+          <th>Accuracy</th>
+          <th>Weighted F1</th>
+          <th>Aug Δ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="td-model">CNN-A</td>
+          <td class="td-regime">Plain</td>
+          <td>29</td>
+          <td>2,238,344</td>
+          <td class="td-acc">89.41%</td>
+          <td class="td-acc">0.894</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td class="td-model">CNN-A</td>
+          <td class="td-regime">Augmented</td>
+          <td>37</td>
+          <td>2,238,344</td>
+          <td class="td-acc">89.76%</td>
+          <td class="td-acc">0.898</td>
+          <td><span class="delta">+0.35 pp</span></td>
+        </tr>
+        <tr>
+          <td class="td-model">CNN-B</td>
+          <td class="td-regime">Plain</td>
+          <td>62</td>
+          <td>365,128</td>
+          <td class="td-acc">90.28%</td>
+          <td class="td-acc">0.903</td>
+          <td></td>
+        </tr>
+        <tr class="best-row">
+          <td class="td-model">CNN-B</td>
+          <td class="td-regime">Augmented</td>
+          <td>82</td>
+          <td>365,128</td>
+          <td class="td-acc td-best">93.98%</td>
+          <td class="td-acc td-best">0.9397</td>
+          <td><span class="delta delta-high">+3.70 pp</span></td>
+        </tr>
+        <tr>
+          <td class="td-model">BiLSTM</td>
+          <td class="td-regime">Plain</td>
+          <td>35</td>
+          <td>436,872</td>
+          <td class="td-acc">85.76%</td>
+          <td class="td-acc">0.858</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td class="td-model">BiLSTM</td>
+          <td class="td-regime">Augmented</td>
+          <td>32</td>
+          <td>436,872</td>
+          <td class="td-acc">93.52%</td>
+          <td class="td-acc">0.935</td>
+          <td><span class="delta delta-high">+7.75 pp</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="charts-row reveal">
+    <div class="chart-card">
+      <div class="chart-title">Accuracy — plain vs augmented, all architectures</div>
+      <canvas id="chartAccuracy" height="220"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Augmentation gain per architecture (pp)</div>
+      <canvas id="chartDelta" height="220"></canvas>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- CROSS-DATASET -->
+<section id="generalisation">
+  <div class="section-label">Cross-dataset evaluation</div>
+  <h2>The generalisation gap</h2>
+  <p class="section-intro reveal">All models trained on RAVDESS were evaluated on 900 CREMA-D clips — a completely different corpus with different actors, phonetics, and recording conditions.</p>
+
+  <div class="cross-grid reveal">
+    <div class="callout-box">
+      <div class="callout-label">Key finding</div>
+      <div class="callout-title">The Benchmark Illusion</div>
+      <p>Accuracy above 93% on a controlled, acted dataset is not a valid proxy for real-world deployability. All models collapsed by more than 67 percentage points when evaluated on unseen speakers and environments.</p>
+      <p class="silver-note">✦ Silver lining — BiLSTM (augmented) proved the strongest generaliser at 26.1%, versus 19.9% for CNN-B (augmented). Temporal sequence modelling encodes slightly more speaker-independent information than static statistical compression.</p>
+    </div>
+
+    <div class="results-wrap" style="margin-bottom:0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>RAVDESS acc.</th>
+            <th>CREMA-D acc.</th>
+            <th>Drop</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-model">CNN-B (plain)</td>
+            <td class="td-acc">90.3%</td>
+            <td class="td-acc">16.3%</td>
+            <td><span class="delta" style="background:rgba(224,144,121,.12);color:var(--salmon);">−73.9 pp</span></td>
+          </tr>
+          <tr>
+            <td class="td-model">CNN-B (aug)</td>
+            <td class="td-acc">93.9%</td>
+            <td class="td-acc">19.9%</td>
+            <td><span class="delta" style="background:rgba(224,144,121,.12);color:var(--salmon);">−74.1 pp</span></td>
+          </tr>
+          <tr>
+            <td class="td-model">BiLSTM (plain)</td>
+            <td class="td-acc">85.7%</td>
+            <td class="td-acc">17.1%</td>
+            <td><span class="delta" style="background:rgba(224,144,121,.12);color:var(--salmon);">−68.7 pp</span></td>
+          </tr>
+          <tr>
+            <td class="td-model">BiLSTM (aug)</td>
+            <td class="td-acc">93.5%</td>
+            <td class="td-acc">26.1%</td>
+            <td><span class="delta" style="background:rgba(224,144,121,.12);color:var(--salmon);">−67.4 pp</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- TAKEAWAYS -->
+<section id="takeaways">
+  <div class="section-label">Conclusions</div>
+  <h2>Three key takeaways</h2>
+
+  <div class="takeaways-grid">
+    <div class="takeaway-card reveal">
+      <div class="takeaway-num">01</div>
+      <div class="takeaway-title">Depth + Regularisation Dominates Shallow Baselines</div>
+      <div class="takeaway-body">CNN-B vastly outperformed CNN-A despite having 83% fewer parameters. Global Average Pooling effectively eliminates the overfitting bottleneck inherent to Flatten-to-Dense networks on small datasets.</div>
+    </div>
+    <div class="takeaway-card reveal">
+      <div class="takeaway-num">02</div>
+      <div class="takeaway-title">Temporal Models Have Higher Sample Complexity</div>
+      <div class="takeaway-body">BiLSTM requires significantly more data to learn temporal transitions. Given sufficient augmentation, it matches the performance of deep CNNs and displays superior cross-domain robustness (+6.2 pp over CNN-B on CREMA-D).</div>
+    </div>
+    <div class="takeaway-card reveal">
+      <div class="takeaway-num">03</div>
+      <div class="takeaway-title">High In-Domain Accuracy Alone Is Misleading</div>
+      <div class="takeaway-body">The severe collapse on CREMA-D proves that >93% accuracy on a controlled corpus is not a valid proxy for real-world deployability. Genuine progress requires domain-agnostic benchmarks and multi-corpus training.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- LIMITATIONS & FUTURE WORK -->
+<section id="future">
+  <div class="section-label">Reflection</div>
+  <h2>Limitations &amp; future work</h2>
+  <div class="two-col">
+    <div class="list-card reveal">
+      <h3>Core limitations</h3>
+      <ul class="icon-list">
+        <li>
+          <span class="icon">!</span>
+          <span><strong>Domain gap.</strong> RAVDESS relies on acted, controlled studio speech, which inflates accuracy relative to naturalistic conversation.</span>
+        </li>
+        <li>
+          <span class="icon">!</span>
+          <span><strong>Narrow context.</strong> Models overfit to the phonetic and prosodic constraints of the two fixed sentences used in RAVDESS.</span>
+        </li>
+        <li>
+          <span class="icon">!</span>
+          <span><strong>Simple augmentation.</strong> Gaussian noise and time-shifting are insufficient to bridge multi-domain acoustic environments.</span>
+        </li>
+      </ul>
+    </div>
+    <div class="list-card reveal">
+      <h3>Actionable future directions</h3>
+      <ul class="icon-list">
+        <li>
+          <span class="icon-future">→</span>
+          <span><strong>Pretrained representations.</strong> Replace handcrafted MFCCs with self-supervised extractors like wav2vec 2.0 or HuBERT for domain-agnostic features.</span>
+        </li>
+        <li>
+          <span class="icon-future">→</span>
+          <span><strong>Multi-corpus training.</strong> Train simultaneously on RAVDESS, CREMA-D, and IEMOCAP to force generalised emotional boundaries.</span>
+        </li>
+        <li>
+          <span class="icon-future">→</span>
+          <span><strong>Architectural enhancements.</strong> Add attention mechanisms to the BiLSTM and apply richer augmentations such as SpecAugment and pitch shifting.</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE DEMO -->
+<div id="demo">
+  <div class="demo-inner">
+    <div class="section-label" style="color:var(--aqua);">// Live demo</div>
+    <h2 style="color:white;margin-bottom:.5rem;">Try the models yourself</h2>
+    <p style="color:rgba(156,210,209,.6);font-size:.88rem;margin-bottom:2rem;font-weight:300;">Both CNN-B and BiLSTM (augmented) run directly in your browser via TensorFlow.js. No data leaves your device.</p>
+
+    <div id="model-loading-status" style="font-family:'DM Mono',monospace;font-size:.72rem;color:rgba(156,210,209,.5);margin-bottom:1.5rem;letter-spacing:.06em;">
+      ⏳ Loading models...
+    </div>
+
+    <div class="demo-tabs">
+      <button class="tab-btn active" onclick="switchTab('recordings')">🎵 Test Recordings</button>
+      <button class="tab-btn" onclick="switchTab('live')">🎙 Live Test</button>
+    </div>
+
+    <!-- TEST RECORDINGS PANEL -->
+    <div class="demo-panel active" id="panel-recordings">
+      <p style="font-size:.83rem;color:rgba(156,210,209,.55);margin-bottom:1.2rem;font-weight:300;">Select an audio clip. It will play automatically and both models will predict the emotion.</p>
+      <div class="audio-grid" id="audioGrid">
+        <!-- populated by JS -->
+      </div>
+      <div class="demo-action-row" style="margin-top:.5rem;">
+        <button class="action-btn" onclick="resetRecordingsDemo()">↺ Try another</button>
+      </div>
+    </div>
+
+    <!-- LIVE TEST PANEL -->
+    <div class="demo-panel" id="panel-live">
+      <div class="record-area">
+        <p class="record-hint">Say something with a clear emotion. Aim for 3 seconds. The models were trained on acted speech — be theatrical. Speak close to your microphone.</p>
+        <button class="mic-btn" id="micBtn" onclick="handleMicClick()">
+          🎙
+          <div class="countdown-ring" id="countdownRing"></div>
+        </button>
+        <div class="countdown-text" id="countdownText"></div>
+      </div>
+      <div class="demo-action-row" style="justify-content:center;margin-top:0;">
+        <button class="action-btn" onclick="resetLiveDemo()" id="recordAgainBtn" style="display:none;">↺ Record again</button>
+      </div>
+    </div>
+
+    <!-- SHARED: loading + output -->
+    <div class="demo-loading" id="demoLoading">
+      <div class="spinner"></div>
+      <div class="loading-text">Extracting features &amp; running inference...</div>
+    </div>
+
+    <div class="demo-error" id="demoError"></div>
+
+    <div class="prediction-output" id="predictionOutput">
+      <div class="pred-card">
+        <div class="pred-card-title">CNN-B · augmented</div>
+        <div class="pred-top" id="cnnTopLabel">—</div>
+        <canvas id="chartCNN" height="160"></canvas>
+      </div>
+      <div class="pred-card">
+        <div class="pred-card-title">BiLSTM · augmented</div>
+        <div class="pred-top" id="lstmTopLabel">—</div>
+        <canvas id="chartLSTM" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    MAI 604 · Deep Learning · Canadian University Dubai · 2026<br>
+    Farnaz Azarparand · Rajeev Pandey · Hussein Aboueldahab
+  </div>
+  <div class="footer-right">
+    <a href="https://github.com/Farnaz4649/Speech_Emotion_Recognition_DL" target="_blank">github.com/Farnaz4649/Speech_Emotion_Recognition_DL</a>
+  </div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════
+   REVEAL ON SCROLL
+═══════════════════════════════════════════ */
+const revealObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); } });
+}, { threshold: .12 });
+document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+/* ═══════════════════════════════════════════
+   CHART.JS — ACCURACY COMPARISON
+═══════════════════════════════════════════ */
+const C = {
+  indigo:  '#22273e',
+  pacific: '#5c9eab',
+  aqua:    '#9ad2d1',
+  blush:   '#e2d7da',
+  salmon:  '#e09079',
+};
+
+const chartDefaults = {
+  font: { family: "'DM Mono', monospace" },
+  color: 'rgba(34,39,62,.55)',
+};
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.color = 'rgba(34,39,62,.55)';
+
+new Chart(document.getElementById('chartAccuracy'), {
+  type: 'bar',
+  data: {
+    labels: ['CNN-A', 'CNN-B', 'BiLSTM'],
+    datasets: [
+      {
+        label: 'Plain',
+        data: [89.41, 90.28, 85.76],
+        backgroundColor: 'rgba(92,158,171,.25)',
+        borderColor: C.pacific,
+        borderWidth: 1.5,
+        borderRadius: 3,
+      },
+      {
+        label: 'Augmented',
+        data: [89.76, 93.98, 93.52],
+        backgroundColor: 'rgba(156,210,209,.35)',
+        borderColor: C.aqua,
+        borderWidth: 1.5,
+        borderRadius: 3,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'top', labels: { font: { size: 10 }, padding: 14, usePointStyle: true } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}%` } },
+    },
+    scales: {
+      y: {
+        min: 82, max: 96,
+        grid: { color: 'rgba(92,158,171,.1)' },
+        ticks: { callback: v => v + '%', font: { size: 9 } },
+      },
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+    },
+  },
+});
+
+new Chart(document.getElementById('chartDelta'), {
+  type: 'bar',
+  data: {
+    labels: ['CNN-A', 'CNN-B', 'BiLSTM'],
+    datasets: [{
+      label: 'Augmentation gain (pp)',
+      data: [0.35, 3.70, 7.75],
+      backgroundColor: [
+        'rgba(92,158,171,.3)',
+        'rgba(156,210,209,.4)',
+        'rgba(92,158,171,.5)',
+      ],
+      borderColor: [C.pacific, C.aqua, C.pacific],
+      borderWidth: 1.5,
+      borderRadius: 3,
+    }],
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` +${ctx.parsed.x} pp` } },
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(92,158,171,.1)' },
+        ticks: { callback: v => '+' + v, font: { size: 9 } },
+      },
+      y: { grid: { display: false }, ticks: { font: { size: 10 } } },
+    },
+  },
+});
+
+/* ═══════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════ */
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.demo-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
+  document.getElementById(`panel-${name}`).classList.add('active');
+  resetPredictionUI();
+}
+
+/* ═══════════════════════════════════════════
+   AUDIO CARD GRID
+═══════════════════════════════════════════ */
+const EMOTIONS = [
+  { label: 'Angry',     emoji: '😠', file: 'angry_1.wav'    },
+  { label: 'Calm',      emoji: '😌', file: 'calm_1.wav'     },
+  { label: 'Disgust',   emoji: '🤢', file: 'disgust_1.wav'  },
+  { label: 'Fearful',   emoji: '😨', file: 'fearful_1.wav'  },
+  { label: 'Happy',     emoji: '😄', file: 'happy_1.wav'    },
+  { label: 'Neutral',   emoji: '😐', file: 'neutral_1.wav'  },
+  { label: 'Sad',       emoji: '😢', file: 'sad_1.wav'      },
+  { label: 'Surprised', emoji: '😲', file: 'surprised_1.wav'},
+];
+const CLASS_NAMES = ['angry','calm','disgust','fearful','happy','neutral','sad','surprised'];
+
+let activeAudio = null;
+let activeCard = null;
+
+const grid = document.getElementById('audioGrid');
+EMOTIONS.forEach(em => {
+  const card = document.createElement('div');
+  card.className = 'audio-card';
+  card.innerHTML = `
+    <div class="emotion-emoji">${em.emoji}</div>
+    <div class="emotion-label">${em.label}</div>
+    <div class="play-icon">▶</div>
+    <div class="audio-filename">${em.file}</div>
+  `;
+  card.addEventListener('click', () => selectAudioCard(card, em));
+  grid.appendChild(card);
+});
+
+function selectAudioCard(card, em) {
+  if (activeAudio) { activeAudio.pause(); activeAudio.currentTime = 0; }
+  if (activeCard)  { activeCard.classList.remove('selected','playing'); }
+  card.classList.add('selected','playing');
+  activeCard = card;
+
+  const audio = new Audio(`audio_samples/${em.file}`);
+  activeAudio = audio;
+  audio.play().catch(() => {});
+  audio.addEventListener('ended', () => card.classList.remove('playing'));
+
+  runInferenceOnFile(`audio_samples/${em.file}`);
+}
+
+function resetRecordingsDemo() {
+  if (activeAudio) { activeAudio.pause(); activeAudio = null; }
+  if (activeCard)  { activeCard.classList.remove('selected','playing'); activeCard = null; }
+  resetPredictionUI();
+}
+
+/* ═══════════════════════════════════════════
+   TF.JS MODEL LOADING
+═══════════════════════════════════════════ */
+let cnnModel  = null;
+let lstmModel = null;
+let scalers   = null;
+let config    = null;
+let modelsReady = false;
+
+const statusEl = document.getElementById('model-loading-status');
+
+async function loadModels() {
+  try {
+    const tf = window.tf;
+    if (!tf) { statusEl.textContent = '⚠ TensorFlow.js not loaded — demo unavailable.'; return; }
+
+    statusEl.textContent = '⏳ Loading CNN-B model...';
+    cnnModel = await tf.loadLayersModel('models/cnn_b/model.json');
+
+    statusEl.textContent = '⏳ Loading BiLSTM model...';
+    lstmModel = await tf.loadLayersModel('models/lstm/model.json');
+
+    statusEl.textContent = '⏳ Loading scalers...';
+    const [scalersResp, configResp] = await Promise.all([
+      fetch('models/scalers.json'),
+      fetch('models/config.json'),
+    ]);
+    scalers = await scalersResp.json();
+    config  = await configResp.json();
+
+    modelsReady = true;
+    statusEl.innerHTML = '✓ <span style="color:var(--aqua)">Models ready</span> — CNN-B (365K params) + BiLSTM (437K params) loaded.';
+  } catch (err) {
+    statusEl.textContent = '⚠ Could not load models. Ensure the /models/ folder is deployed alongside these HTML files.';
+    console.error('Model load error:', err);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   FEATURE EXTRACTION (JS — mirrors notebook)
+═══════════════════════════════════════════ */
+const SR = 22050;
+const N_MFCC = 40;
+const N_MEL  = 128;
+const N_FFT  = 2048;
+const HOP    = 512;
+const N_CHROMA = 12;
+const MAX_FRAMES = 130;
+
+// Simple DCT-II for MFCC
+function dct2(x) {
+  const N = x.length;
+  const out = new Float32Array(N);
+  for (let k = 0; k < N; k++) {
+    let s = 0;
+    for (let n = 0; n < N; n++) s += x[n] * Math.cos(Math.PI * k * (2*n+1) / (2*N));
+    out[k] = s;
+  }
+  return out;
+}
+
+function hzToMel(hz) { return 2595 * Math.log10(1 + hz / 700); }
+function melToHz(mel) { return 700 * (Math.pow(10, mel / 2595) - 1); }
+
+function melFilterbank(sr, nFft, nMel) {
+  const fMin = 0, fMax = sr / 2;
+  const melMin = hzToMel(fMin), melMax = hzToMel(fMax);
+  const melPoints = Array.from({length: nMel+2}, (_, i) => melMin + i*(melMax-melMin)/(nMel+1));
+  const hzPoints  = melPoints.map(melToHz);
+  const binPoints = hzPoints.map(hz => Math.floor((nFft+1) * hz / sr));
+  const fb = [];
+  for (let m = 1; m <= nMel; m++) {
+    const row = new Float32Array(nFft/2+1);
+    for (let k = binPoints[m-1]; k < binPoints[m];   k++) row[k] = (k-binPoints[m-1])/(binPoints[m]-binPoints[m-1]);
+    for (let k = binPoints[m];   k < binPoints[m+1]; k++) row[k] = (binPoints[m+1]-k)/(binPoints[m+1]-binPoints[m]);
+    fb.push(row);
+  }
+  return fb;
+}
+
+function rfft(signal) {
+  // Cooley-Tukey FFT (power-of-2 only)
+  const n = signal.length;
+  if (n === 1) return [{ re: signal[0], im: 0 }];
+  const even = rfft(signal.filter((_, i) => i % 2 === 0));
+  const odd  = rfft(signal.filter((_, i) => i % 2 !== 0));
+  const out  = Array(n);
+  for (let k = 0; k < n/2; k++) {
+    const t = -2 * Math.PI * k / n;
+    const cos_t = Math.cos(t), sin_t = Math.sin(t);
+    const re = odd[k].re * cos_t - odd[k].im * sin_t;
+    const im = odd[k].re * sin_t + odd[k].im * cos_t;
+    out[k]     = { re: even[k].re + re, im: even[k].im + im };
+    out[k+n/2] = { re: even[k].re - re, im: even[k].im - im };
+  }
+  return out;
+}
+
+function nextPow2(n) { return Math.pow(2, Math.ceil(Math.log2(n))); }
+
+function stft(signal, nFft, hop) {
+  const winLen = nFft;
+  const window = Array.from({length: winLen}, (_, i) => 0.5 - 0.5 * Math.cos(2*Math.PI*i/(winLen-1)));
+  const frames = [];
+  for (let start = 0; start + winLen <= signal.length; start += hop) {
+    const frame = new Array(nFft).fill(0);
+    for (let i = 0; i < winLen; i++) frame[i] = signal[start + i] * window[i];
+    const spectrum = rfft(frame);
+    frames.push(spectrum.slice(0, nFft/2+1));
+  }
+  return frames; // frames × (nFft/2+1) complex
+}
+
+function powerSpectrum(frames) {
+  return frames.map(f => f.map(c => c.re*c.re + c.im*c.im));
+}
+
+function computeMelSpectrogram(signal, sr, nFft, hop, nMel) {
+  const frames = stft(signal, nFft, hop);
+  const power  = powerSpectrum(frames);
+  const fb     = melFilterbank(sr, nFft, nMel);
+  return power.map(frame => fb.map(row => {
+    let s = 0;
+    for (let k = 0; k < row.length; k++) s += row[k] * frame[k];
+    return s;
+  }));  // (T, nMel)
+}
+
+function computeMFCC(melSpec, nMfcc) {
+  return melSpec.map(frame => {
+    const logMel = frame.map(v => Math.log(v + 1e-8));
+    const mfcc   = dct2(logMel);
+    return Array.from(mfcc.slice(0, nMfcc));
+  }); // (T, nMfcc)
+}
+
+function computeDelta(coeff, order=1) {
+  const T = coeff.length, M = 2;
+  return coeff.map((_, t) => coeff[t].map((_, k) => {
+    let num = 0, den = 0;
+    for (let n = 1; n <= M; n++) {
+      const tp = Math.min(t+n, T-1), tm = Math.max(t-n, 0);
+      num += n * (coeff[tp][k] - coeff[tm][k]);
+      den += n * n;
+    }
+    return num / (2 * den);
+  }));
+}
+
+function meanStd(arr2d) {
+  // arr2d shape: (T, K) — returns (mean_k, std_k) both length K
+  const T = arr2d.length, K = arr2d[0].length;
+  const mean = new Array(K).fill(0);
+  arr2d.forEach(row => row.forEach((v, k) => mean[k] += v / T));
+  const std  = new Array(K).fill(0);
+  arr2d.forEach(row => row.forEach((v, k) => std[k] += (v - mean[k])**2 / T));
+  return [...mean, ...std.map(Math.sqrt)];
+}
+
+function chromagram(power, sr, nFft, nChroma) {
+  const binToHz = k => k * sr / nFft;
+  const hzToChroma = hz => {
+    if (hz < 1) return 0;
+    return Math.round(12 * Math.log2(hz / 261.63)) % nChroma;
+  };
+  return power.map(frame => {
+    const chroma = new Array(nChroma).fill(0);
+    for (let k = 1; k < frame.length; k++) {
+      const c = ((hzToChroma(binToHz(k)) % nChroma) + nChroma) % nChroma;
+      chroma[c] += frame[k];
+    }
+    const mx = Math.max(...chroma) || 1;
+    return chroma.map(v => v / mx);
+  });
+}
+
+function extractFeaturesFromBuffer(floatSamples) {
+  // 1. High-pass filter ~80 Hz (simple 1-pole IIR)
+  const alpha = 1 - 2 * Math.PI * 80 / SR;
+  let prev = 0, hpSig = new Float32Array(floatSamples.length);
+  for (let i = 0; i < floatSamples.length; i++) {
+    hpSig[i] = alpha * prev + floatSamples[i] - (i > 0 ? floatSamples[i-1] : 0);
+    prev = hpSig[i];
+  }
+
+  // 2. VAD trim (25 dB below peak RMS)
+  const frameLen = 512;
+  const threshold = (() => {
+    let maxRMS = 0;
+    for (let s = 0; s + frameLen <= hpSig.length; s += frameLen) {
+      const rms = Math.sqrt(hpSig.slice(s, s+frameLen).reduce((a,v) => a+v*v, 0) / frameLen);
+      if (rms > maxRMS) maxRMS = rms;
+    }
+    return maxRMS * Math.pow(10, -25/20);
+  })();
+
+  let start = 0, end = hpSig.length;
+  for (let s = 0; s + frameLen <= hpSig.length; s += frameLen) {
+    const rms = Math.sqrt(hpSig.slice(s, s+frameLen).reduce((a,v) => a+v*v, 0) / frameLen);
+    if (rms > threshold) { start = s; break; }
+  }
+  for (let s = hpSig.length - frameLen; s >= 0; s -= frameLen) {
+    const rms = Math.sqrt(hpSig.slice(s, s+frameLen).reduce((a,v) => a+v*v, 0) / frameLen);
+    if (rms > threshold) { end = s + frameLen; break; }
+  }
+  let trimmed = hpSig.slice(start, end);
+  if (trimmed.length < 512) trimmed = hpSig;  // fallback
+
+  // 3. RMS normalisation to RAVDESS target
+  const targetRMS = config ? config.ravdess_target_rms : 0.0097;
+  const currentRMS = Math.sqrt(trimmed.reduce((a,v) => a+v*v, 0) / trimmed.length);
+  if (currentRMS > 1e-6) {
+    const gain = targetRMS / currentRMS;
+    trimmed = trimmed.map(v => Math.max(-1, Math.min(1, v * gain)));
+  }
+
+  // 4. Feature extraction
+  const melSpec = computeMelSpectrogram(trimmed, SR, N_FFT, HOP, N_MEL);
+  const mfccRaw = computeMFCC(melSpec.slice(0, N_MEL), SR, N_FFT, HOP, N_MEL).slice();
+  // actually compute MFCC from mel
+  const mfcc40  = computeMFCC(melSpec, N_MFCC);
+  const delta1  = computeDelta(mfcc40);
+  const delta2  = computeDelta(delta1);
+
+  // CNN features: mean+std of mfcc, delta, delta2, mel, chroma, rms, zcr
+  const mfcc_feat   = meanStd(mfcc40);    // 80
+  const delta_feat  = meanStd(delta1);    // 80
+  const delta2_feat = meanStd(delta2);    // 80
+
+  const frames = stft(trimmed, N_FFT, HOP);
+  const power  = powerSpectrum(frames);
+  const melFull = power.map(frame => melFilterbank(SR, N_FFT, N_MEL).map(row => row.reduce((a,v,k) => a+v*frame[k], 0)));
+  const mel_feat = meanStd(melFull);      // 256
+
+  const chroma4  = chromagram(power, SR, N_FFT, N_CHROMA);
+  const chr_feat = meanStd(chroma4);      // 24
+
+  // RMS per frame
+  const rmsFrames = frames.map((_, fi) => {
+    const s = fi * HOP;
+    let sq = 0;
+    for (let i = s; i < Math.min(s+N_FFT, trimmed.length); i++) sq += trimmed[i]**2;
+    return Math.sqrt(sq / N_FFT);
+  });
+  const rms_feat = [rmsFrames.reduce((a,v) => a+v,0)/rmsFrames.length,
+                    Math.sqrt(rmsFrames.reduce((a,v) => a+v*v,0)/rmsFrames.length - (rmsFrames.reduce((a,v) => a+v,0)/rmsFrames.length)**2)];
+
+  // ZCR
+  const zcrFrames = frames.map((_, fi) => {
+    const s = fi * HOP;
+    let zc = 0;
+    for (let i = s+1; i < Math.min(s+N_FFT, trimmed.length); i++) {
+      if ((trimmed[i] >= 0) !== (trimmed[i-1] >= 0)) zc++;
+    }
+    return zc / N_FFT;
+  });
+  const zcr_feat = [zcrFrames.reduce((a,v) => a+v,0)/zcrFrames.length,
+                    Math.sqrt(zcrFrames.reduce((a,v) => a+v*v,0)/zcrFrames.length - (zcrFrames.reduce((a,v) => a+v,0)/zcrFrames.length)**2)];
+
+  const X_cnn = [...mfcc_feat, ...delta_feat, ...delta2_feat, ...mel_feat, ...chr_feat, ...rms_feat, ...zcr_feat];
+
+  // LSTM features: frame-level stack of mfcc+delta+delta2 → (T, 120)
+  const T = Math.min(mfcc40.length, MAX_FRAMES);
+  const X_lstm = new Float32Array(MAX_FRAMES * 120).fill(0);
+  for (let t = 0; t < T; t++) {
+    for (let k = 0; k < 40; k++)  X_lstm[t*120 + k]    = mfcc40[t][k];
+    for (let k = 0; k < 40; k++)  X_lstm[t*120 + 40+k] = delta1[t] ? delta1[t][k] : 0;
+    for (let k = 0; k < 40; k++)  X_lstm[t*120 + 80+k] = delta2[t] ? delta2[t][k] : 0;
+  }
+
+  return { X_cnn: Float32Array.from(X_cnn), X_lstm };
+}
+
+function applyScaler(data, mean, std) {
+  return data.map((v, i) => (v - mean[i % mean.length]) / (std[i % std.length] + 1e-8));
+}
+
+async function runInference(X_cnn_raw, X_lstm_raw) {
+  if (!modelsReady) throw new Error('Models not loaded yet');
+  const tf = window.tf;
+
+  // Scale CNN
+  const cnnMean = scalers.cnn.mean, cnnStd = scalers.cnn.std;
+  const X_cnn_scaled = applyScaler(Array.from(X_cnn_raw), cnnMean, cnnStd);
+  const cnnTensor = tf.tensor3d([X_cnn_scaled.map(v => [v])]);  // (1, 524, 1)
+
+  // Scale LSTM
+  const lstmMean = scalers.lstm.mean, lstmStd = scalers.lstm.std;
+  const X_lstm_arr = Array.from(X_lstm_raw);
+  const X_lstm_scaled = applyScaler(X_lstm_arr, lstmMean, lstmStd);
+  const lstmTensor = tf.tensor3d(
+    Array.from({length: MAX_FRAMES}, (_, t) => Array.from({length: 120}, (_, k) => X_lstm_scaled[t*120+k])),
+  ).expandDims(0); // (1, 130, 120)
+
+  const [cnnProbs, lstmProbs] = await Promise.all([
+    cnnModel.predict(cnnTensor).data(),
+    lstmModel.predict(lstmTensor).data(),
+  ]);
+
+  cnnTensor.dispose(); lstmTensor.dispose();
+  return { cnnProbs: Array.from(cnnProbs), lstmProbs: Array.from(lstmProbs) };
+}
+
+async function runInferenceOnFile(url) {
+  if (!modelsReady) { showError('Models are still loading. Please wait a moment.'); return; }
+  showLoading();
+  try {
+    const resp = await fetch(url);
+    const arrayBuf = await resp.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
+    const decoded  = await audioCtx.decodeAudioData(arrayBuf);
+    const samples  = decoded.getChannelData(0);
+    const { X_cnn, X_lstm } = extractFeaturesFromBuffer(samples);
+    const { cnnProbs, lstmProbs } = await runInference(X_cnn, X_lstm);
+    hideLoading();
+    displayPredictions(cnnProbs, lstmProbs);
+  } catch(err) {
+    hideLoading();
+    showError('Could not process audio file: ' + err.message);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   LIVE RECORDING
+═══════════════════════════════════════════ */
+let mediaRecorder = null;
+let recordingChunks = [];
+let isRecording = false;
+
+async function handleMicClick() {
+  if (isRecording) return;
+  if (!modelsReady) { showError('Models are still loading. Please wait.'); return; }
+
+  const micBtn = document.getElementById('micBtn');
+  const countdownEl = document.getElementById('countdownText');
+  const recordAgainBtn = document.getElementById('recordAgainBtn');
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    isRecording = true;
+    recordingChunks = [];
+    micBtn.classList.add('recording');
+    micBtn.textContent = '⏹';
+    micBtn.querySelector('.countdown-ring').style.display = 'block';
+
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => recordingChunks.push(e.data);
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(recordingChunks, { type: 'audio/webm' });
+      countdownEl.textContent = '';
+      micBtn.textContent = '🎙';
+      micBtn.classList.remove('recording');
+      recordAgainBtn.style.display = 'inline-block';
+      await processLiveBlob(blob);
+    };
+    mediaRecorder.start();
+
+    let secs = 3;
+    countdownEl.textContent = `Recording… ${secs}s`;
+    const iv = setInterval(() => {
+      secs--;
+      if (secs > 0) { countdownEl.textContent = `Recording… ${secs}s`; }
+      else {
+        clearInterval(iv);
+        countdownEl.textContent = 'Processing…';
+        mediaRecorder.stop();
+        isRecording = false;
+      }
+    }, 1000);
+
+  } catch(err) {
+    isRecording = false;
+    showError('Microphone access denied or unavailable. Please allow microphone access in your browser and try again.');
+  }
+}
+
+async function processLiveBlob(blob) {
+  showLoading();
+  try {
+    const arrayBuf = await blob.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
+    const decoded  = await audioCtx.decodeAudioData(arrayBuf);
+    const samples  = decoded.getChannelData(0);
+    const { X_cnn, X_lstm } = extractFeaturesFromBuffer(samples);
+    const { cnnProbs, lstmProbs } = await runInference(X_cnn, X_lstm);
+    hideLoading();
+    displayPredictions(cnnProbs, lstmProbs);
+  } catch(err) {
+    hideLoading();
+    showError('Could not process recording: ' + err.message);
+    console.error(err);
+  }
+}
+
+function resetLiveDemo() {
+  document.getElementById('recordAgainBtn').style.display = 'none';
+  resetPredictionUI();
+}
+
+/* ═══════════════════════════════════════════
+   PREDICTION DISPLAY
+═══════════════════════════════════════════ */
+let cnnChart = null, lstmChart = null;
+
+const EMOTION_EMOJIS = { angry:'😠', calm:'😌', disgust:'🤢', fearful:'😨', happy:'😄', neutral:'😐', sad:'😢', surprised:'😲' };
+
+function displayPredictions(cnnProbs, lstmProbs) {
+  const output = document.getElementById('predictionOutput');
+  output.classList.add('visible');
+
+  const cnnTop  = CLASS_NAMES[cnnProbs.indexOf(Math.max(...cnnProbs))];
+  const lstmTop = CLASS_NAMES[lstmProbs.indexOf(Math.max(...lstmProbs))];
+
+  document.getElementById('cnnTopLabel').innerHTML =
+    `${EMOTION_EMOJIS[cnnTop]} ${cnnTop} <span>${(Math.max(...cnnProbs)*100).toFixed(1)}%</span>`;
+  document.getElementById('lstmTopLabel').innerHTML =
+    `${EMOTION_EMOJIS[lstmTop]} ${lstmTop} <span>${(Math.max(...lstmProbs)*100).toFixed(1)}%</span>`;
+
+  const barColors = (probs) => probs.map((p, i) =>
+    CLASS_NAMES[i] === CLASS_NAMES[probs.indexOf(Math.max(...probs))]
+      ? 'rgba(92,158,171,.7)'
+      : 'rgba(156,210,209,.25)'
+  );
+
+  const chartCfg = (probs) => ({
+    type: 'bar',
+    data: {
+      labels: CLASS_NAMES.map(c => c.charAt(0).toUpperCase()+c.slice(1)),
+      datasets: [{
+        data: probs.map(p => (p*100).toFixed(1)),
+        backgroundColor: barColors(probs),
+        borderColor: 'rgba(92,158,171,.4)',
+        borderWidth: 1,
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } },
+      scales: {
+        y: { min:0, max:100, grid: { color:'rgba(156,210,209,.12)' }, ticks: { color:'rgba(156,210,209,.6)', font:{size:9}, callback: v=>v+'%' } },
+        x: { grid: { display:false }, ticks: { color:'rgba(156,210,209,.7)', font:{size:9} } },
+      },
+    },
+  });
+
+  if (cnnChart)  { cnnChart.destroy(); }
+  if (lstmChart) { lstmChart.destroy(); }
+  cnnChart  = new Chart(document.getElementById('chartCNN'),  chartCfg(cnnProbs));
+  lstmChart = new Chart(document.getElementById('chartLSTM'), chartCfg(lstmProbs));
+}
+
+function resetPredictionUI() {
+  document.getElementById('predictionOutput').classList.remove('visible');
+  document.getElementById('demoError').classList.remove('visible');
+  document.getElementById('demoLoading').classList.remove('visible');
+  if (cnnChart)  { cnnChart.destroy();  cnnChart  = null; }
+  if (lstmChart) { lstmChart.destroy(); lstmChart = null; }
+}
+
+function showLoading() {
+  document.getElementById('demoLoading').classList.add('visible');
+  document.getElementById('demoError').classList.remove('visible');
+  document.getElementById('predictionOutput').classList.remove('visible');
+}
+function hideLoading() { document.getElementById('demoLoading').classList.remove('visible'); }
+function showError(msg) {
+  const el = document.getElementById('demoError');
+  el.textContent = '⚠ ' + msg;
+  el.classList.add('visible');
+  hideLoading();
+}
+
+/* ═══════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════ */
+// Load TF.js then models
+(function loadTFJS() {
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.10.0/tf.min.js';
+  script.onload = () => loadModels();
+  script.onerror = () => { statusEl.textContent = '⚠ TensorFlow.js failed to load. Check your internet connection.'; };
+  document.head.appendChild(script);
+})();
+</script>
+</body>
+</html>

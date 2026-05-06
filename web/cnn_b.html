@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN-B · Deep Primary Model — SER · MAI 604</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --indigo:#22273e; --pacific:#5c9eab; --aqua:#9ad2d1; --blush:#e2d7da; --salmon:#e09079; --radius:6px; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--blush); color: var(--indigo); font-family: 'DM Sans', sans-serif; font-weight: 300; line-height: 1.7; overflow-x: hidden; }
+
+  nav { position: sticky; top: 0; z-index: 100; background: var(--indigo); display: flex; align-items: center; justify-content: space-between; padding: 0 2.5rem; height: 52px; border-bottom: 1px solid rgba(156,210,209,.15); }
+  .nav-back { font-family: 'DM Mono', monospace; font-size: .7rem; color: var(--aqua); text-decoration: none; letter-spacing: .08em; text-transform: uppercase; display: flex; align-items: center; gap: .5rem; transition: gap .2s; }
+  .nav-back:hover { gap: .8rem; }
+  .nav-tag { font-family: 'DM Mono', monospace; font-size: .68rem; color: rgba(156,210,209,.45); letter-spacing: .06em; }
+
+  .page-hero { background: var(--indigo); padding: 4rem 2.5rem 3rem; position: relative; overflow: hidden; }
+  .page-hero::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(92,158,171,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(92,158,171,.05) 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; }
+  .page-hero-inner { position: relative; z-index: 1; max-width: 700px; }
+  .page-label { font-family: 'DM Mono', monospace; font-size: .68rem; color: var(--aqua); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 1rem; }
+  .page-label::before { content: '// '; }
+  .page-hero h1 { font-family: 'DM Serif Display', serif; font-size: clamp(2rem, 4vw, 3.2rem); color: white; line-height: 1.1; margin-bottom: .8rem; }
+  .page-hero h1 em { font-style: italic; color: var(--aqua); }
+  .page-hero p { font-size: .95rem; color: rgba(156,210,209,.6); font-weight: 300; max-width: 520px; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); background: rgba(34,39,62,.6); border-bottom: 1px solid rgba(156,210,209,.1); }
+  .stat-cell { padding: 1.6rem 1.8rem; border-right: 1px solid rgba(156,210,209,.08); }
+  .stat-cell:last-child { border-right: none; }
+  .stat-num { font-family: 'DM Serif Display', serif; font-size: 1.8rem; color: var(--aqua); line-height: 1; }
+  .stat-num sup { font-size: .55em; vertical-align: super; }
+  .stat-num.best { color: var(--salmon); }
+  .stat-desc { font-family: 'DM Mono', monospace; font-size: .62rem; color: rgba(156,210,209,.5); letter-spacing: .07em; text-transform: uppercase; line-height: 1.4; margin-top: .4rem; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 4rem 2.5rem; }
+  h2 { font-family: 'DM Serif Display', serif; font-size: clamp(1.5rem, 2.8vw, 2rem); color: var(--indigo); line-height: 1.2; margin-bottom: .5rem; }
+  h2 em { font-style: italic; color: var(--pacific); }
+  .section-label { font-family: 'DM Mono', monospace; font-size: .66rem; color: var(--pacific); letter-spacing: .1em; text-transform: uppercase; margin-bottom: .8rem; }
+  .section-label::before { content: '// '; }
+  .block { margin-bottom: 4rem; }
+  .card { background: white; border: 1px solid rgba(92,158,171,.18); border-radius: var(--radius); padding: 1.8rem; }
+  .card-title { font-family: 'DM Mono', monospace; font-size: .66rem; color: var(--pacific); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 1.2rem; }
+  .card-title::before { content: '// '; }
+
+  /* ── 83% CALLOUT ── */
+  .hero-callout {
+    background: var(--indigo);
+    border-radius: var(--radius);
+    padding: 2rem 2.5rem;
+    margin-bottom: 2rem;
+    display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;
+  }
+  .hero-callout-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 3.5rem; color: var(--salmon); line-height: 1; flex-shrink: 0;
+  }
+  .hero-callout-text { font-size: .9rem; color: rgba(156,210,209,.75); line-height: 1.65; }
+  .hero-callout-text strong { color: white; font-weight: 500; }
+
+  /* ── DIAGRAM ── */
+  .diagram-scroll { overflow-x: auto; padding-bottom: 1rem; }
+  .diagram { display: flex; align-items: center; gap: 0; min-width: 1200px; padding: 2.5rem 1.5rem; }
+
+  .connector { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; width: 36px; }
+  .connector-line { width: 100%; height: 2px; background: rgba(92,158,171,.3); position: relative; overflow: visible; }
+  .connector-dot { position: absolute; top: -4px; left: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--aqua); box-shadow: 0 0 6px var(--aqua); animation: travelDot 2.4s ease-in-out infinite; opacity: 0; }
+  @keyframes travelDot { 0% { left: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+
+  .layer-block { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: .4rem; }
+  .layer-box { border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: .6rem .5rem; font-family: 'DM Mono', monospace; font-size: .58rem; text-align: center; line-height: 1.35; transition: transform .2s, box-shadow .2s; cursor: default; }
+  .layer-box:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(34,39,62,.15); }
+  .layer-shape { font-family: 'DM Mono', monospace; font-size: .54rem; color: var(--pacific); margin-top: .15rem; text-align: center; }
+  .layer-name { font-family: 'DM Mono', monospace; font-size: .54rem; color: rgba(34,39,62,.45); letter-spacing: .06em; text-transform: uppercase; text-align: center; }
+
+  .ltype-input   { background: rgba(34,39,62,.08); border: 1.5px solid rgba(34,39,62,.2); color: var(--indigo); width: 64px; }
+  .ltype-conv    { background: rgba(92,158,171,.15); border: 1.5px solid var(--pacific); color: var(--indigo); width: 66px; }
+  .ltype-bn      { background: rgba(156,210,209,.15); border: 1.5px solid var(--aqua); color: var(--indigo); width: 52px; font-size:.55rem; }
+  .ltype-pool    { background: rgba(156,210,209,.2); border: 1.5px dashed var(--aqua); color: var(--indigo); width: 54px; }
+  .ltype-dropout { background: rgba(156,210,209,.08); border: 1.5px dashed rgba(156,210,209,.4); color: rgba(34,39,62,.6); width: 50px; }
+  .ltype-gap     { background: rgba(34,39,62,.9); border: 1.5px solid var(--pacific); color: var(--aqua); width: 64px; }
+  .ltype-dense   { background: rgba(34,39,62,.85); border: 1.5px solid var(--indigo); color: var(--aqua); width: 66px; }
+  .ltype-output  { background: var(--indigo); border: 2px solid var(--pacific); color: var(--aqua); width: 66px; }
+
+  .conv-block-wrap { display: flex; align-items: center; background: rgba(92,158,171,.04); border: 1px solid rgba(92,158,171,.12); border-radius: 6px; padding: .8rem .5rem; position: relative; }
+  .conv-block-label { position: absolute; top: -10px; left: 10px; font-family: 'DM Mono', monospace; font-size: .52rem; color: var(--pacific); letter-spacing: .08em; background: var(--blush); padding: 0 .4rem; text-transform: uppercase; }
+
+  /* ── UPGRADE CARDS ── */
+  .upgrades-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; margin-bottom: 2rem; }
+  .upgrade-card { background: white; border: 1px solid rgba(92,158,171,.18); border-radius: var(--radius); padding: 1.5rem; }
+  .upgrade-num { font-family: 'DM Serif Display', serif; font-size: 2rem; color: rgba(92,158,171,.2); line-height: 1; margin-bottom: .5rem; }
+  .upgrade-title { font-size: .92rem; font-weight: 500; color: var(--indigo); margin-bottom: .5rem; }
+  .upgrade-body { font-size: .8rem; color: rgba(34,39,62,.65); line-height: 1.55; }
+
+  /* ── DIM TABLE ── */
+  .dim-table { width: 100%; border-collapse: collapse; font-size: .84rem; background: white; border-radius: var(--radius); overflow: hidden; border: 1px solid rgba(92,158,171,.18); }
+  .dim-table th { background: var(--indigo); color: var(--aqua); font-family: 'DM Mono', monospace; font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; padding: .75rem 1rem; text-align: left; font-weight: 400; }
+  .dim-table td { padding: .7rem 1rem; border-bottom: 1px solid rgba(92,158,171,.1); color: var(--indigo); font-weight: 300; }
+  .dim-table tr:last-child td { border-bottom: none; }
+  .dim-table tr:hover td { background: rgba(92,158,171,.04); }
+  .dim-table .mono { font-family: 'DM Mono', monospace; font-size: .8rem; color: var(--pacific); }
+  .dim-table .note { font-size: .78rem; color: rgba(34,39,62,.5); }
+
+  /* ── GAP VS FLATTEN COMPARISON ── */
+  .compare-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem; }
+  .compare-card { border-radius: var(--radius); padding: 1.5rem; }
+  .compare-card.old { background: rgba(224,144,121,.06); border: 1px solid rgba(224,144,121,.25); }
+  .compare-card.new { background: rgba(92,158,171,.06); border: 1px solid rgba(92,158,171,.25); }
+  .compare-label { font-family: 'DM Mono', monospace; font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; margin-bottom: .6rem; }
+  .compare-card.old .compare-label { color: var(--salmon); }
+  .compare-card.new .compare-label { color: var(--pacific); }
+  .compare-shape { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: var(--indigo); margin-bottom: .4rem; }
+  .compare-body { font-size: .8rem; color: rgba(34,39,62,.65); line-height: 1.55; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+  .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .info-chip { background: white; border: 1px solid rgba(92,158,171,.18); border-radius: var(--radius); padding: 1.2rem; }
+  .info-chip-label { font-family: 'DM Mono', monospace; font-size: .6rem; color: var(--pacific); letter-spacing: .08em; text-transform: uppercase; margin-bottom: .3rem; }
+  .info-chip-val { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: var(--indigo); line-height: 1; }
+  .info-chip-sub { font-size: .75rem; color: rgba(34,39,62,.5); margin-top: .2rem; }
+
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity .5s ease, transform .5s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  footer { background: var(--indigo); border-top: 1px solid rgba(156,210,209,.1); padding: 2rem 2.5rem; display: flex; justify-content: space-between; align-items: center; }
+  .footer-left { font-family: 'DM Mono', monospace; font-size: .63rem; color: rgba(156,210,209,.45); letter-spacing: .07em; line-height: 1.7; }
+  .footer-right a { font-family: 'DM Mono', monospace; font-size: .66rem; color: var(--pacific); text-decoration: none; border-bottom: 1px solid rgba(92,158,171,.3); transition: border-color .2s; }
+  .footer-right a:hover { border-color: var(--pacific); }
+
+  @media (max-width: 800px) {
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .two-col, .info-grid, .upgrades-grid, .compare-row { grid-template-columns: 1fr; }
+    main { padding: 3rem 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-back" href="index.html">← Back to overview</a>
+  <span class="nav-tag">Architecture 02 of 03</span>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="page-label">Architecture · CNN-B</div>
+    <h1>CNN-B · <em>Deep Primary Model</em></h1>
+    <p>Four convolutional blocks with Batch Normalisation and Global Average Pooling. 83% fewer parameters than CNN-A, best in-domain accuracy at 93.98%.</p>
+  </div>
+  <div class="stat-row" style="margin-top:2.5rem;border-radius:var(--radius);">
+    <div class="stat-cell"><div class="stat-num best">93.98<sup>%</sup></div><div class="stat-desc">Accuracy · augmented · best overall</div></div>
+    <div class="stat-cell"><div class="stat-num">90.28<sup>%</sup></div><div class="stat-desc">Accuracy · plain</div></div>
+    <div class="stat-cell"><div class="stat-num">365<sup>K</sup></div><div class="stat-desc">Parameters — 83% fewer than CNN-A</div></div>
+    <div class="stat-cell"><div class="stat-num">62 / 82</div><div class="stat-desc">Epochs (plain / aug)</div></div>
+  </div>
+</div>
+
+<main>
+
+  <!-- 83% CALLOUT -->
+  <div class="block reveal">
+    <div class="hero-callout">
+      <div class="hero-callout-num">83%</div>
+      <div class="hero-callout-text">
+        <strong>83% reduction in parameters</strong> compared to CNN-A (2,238,344 → 365,128),
+        yet CNN-B achieves 4.22 percentage points higher augmented accuracy (93.98% vs 89.76%).<br><br>
+        This result directly demonstrates that architectural regularisation — via Batch Normalisation and Global Average Pooling — is more effective than simply adding data when working with small corpora.
+      </div>
+    </div>
+  </div>
+
+  <!-- UPGRADES -->
+  <div class="block reveal">
+    <div class="section-label">Three critical upgrades over CNN-A</div>
+    <h2>What <em>changed</em></h2>
+    <div class="upgrades-grid">
+      <div class="upgrade-card">
+        <div class="upgrade-num">01</div>
+        <div class="upgrade-title">Extra Convolutional Block</div>
+        <div class="upgrade-body">A fourth block doubles the filter depth to 512, allowing the network to learn more abstract, emotion-discriminative spectral patterns. Filter progression: 64 → 128 → 256 → 512.</div>
+      </div>
+      <div class="upgrade-card">
+        <div class="upgrade-num">02</div>
+        <div class="upgrade-title">Batch Normalisation</div>
+        <div class="upgrade-body">Applied after every Conv1D layer. Stabilises gradient flow and reduces sensitivity to weight initialisation — particularly important on a dataset of 6,048 training samples where unstable training can waste many epochs.</div>
+      </div>
+      <div class="upgrade-card">
+        <div class="upgrade-num">03</div>
+        <div class="upgrade-title">Global Average Pooling</div>
+        <div class="upgrade-body">Replaces the Flatten layer of CNN-A. Instead of producing a 15,872-dimensional vector, GAP averages each filter map across all 61 spatial positions, yielding a compact 512-dimensional vector. This eliminates 91% of CNN-A's parameters.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER DIAGRAM -->
+  <div class="block reveal">
+    <div class="section-label">Layer architecture</div>
+    <h2>Animated <em>layer diagram</em></h2>
+    <p style="font-size:.88rem;color:rgba(34,39,62,.6);margin-bottom:1.5rem;font-weight:300;">Hover any layer block for details. BatchNorm is shown as a teal BN block following each Conv1D.</p>
+    <div class="card">
+      <div class="card-title">CNN-B · input (524,1) → output (8,) softmax · 365,128 parameters</div>
+      <div class="diagram-scroll">
+        <div class="diagram" id="cnnbDiagram"></div>
+      </div>
+      <!-- GAP vs Flatten comparison -->
+      <div class="compare-row">
+        <div class="compare-card old">
+          <div class="compare-label">CNN-A — Flatten (bottleneck)</div>
+          <div class="compare-shape">(15,872)</div>
+          <div class="compare-body">62 × 256 values passed directly to Dense. 2.03M weights in the head alone. The primary cause of overfitting.</div>
+        </div>
+        <div class="compare-card new">
+          <div class="compare-label">CNN-B — Global Average Pooling</div>
+          <div class="compare-shape">(512,)</div>
+          <div class="compare-body">Average of each of 512 filter maps across all 61 spatial positions. 31× smaller vector, no spatial weight explosion.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIMENSION TRACE -->
+  <div class="block reveal">
+    <div class="section-label">Dimensionality trace</div>
+    <h2>Layer-by-layer <em>shapes</em></h2>
+    <div class="card">
+      <div class="card-title">CNN-B · layer-by-layer dimensionality trace</div>
+      <table class="dim-table">
+        <thead><tr><th>Stage</th><th>Operation</th><th>Output shape</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Input</td>   <td>Input</td>                          <td class="mono">(524, 1)</td>  <td class="note">Same flat feature vector as CNN-A</td></tr>
+          <tr><td>Block 1</td> <td>Conv1D(64, k=3) + BN + ReLU</td>   <td class="mono">(522, 64)</td> <td class="note">BN normalises each mini-batch; no shape change</td></tr>
+          <tr><td></td>        <td>MaxPool1D(pool=2) + Dropout(0.2)</td><td class="mono">(261, 64)</td><td class="note"></td></tr>
+          <tr><td>Block 2</td> <td>Conv1D(128, k=3) + BN + ReLU</td>  <td class="mono">(259, 128)</td><td class="note"></td></tr>
+          <tr><td></td>        <td>MaxPool1D(pool=2) + Dropout(0.2)</td><td class="mono">(129, 128)</td><td class="note"></td></tr>
+          <tr><td>Block 3</td> <td>Conv1D(256, k=3) + BN + ReLU</td>  <td class="mono">(127, 256)</td><td class="note"></td></tr>
+          <tr><td></td>        <td>MaxPool1D(pool=2) + Dropout(0.2)</td><td class="mono">(63, 256)</td> <td class="note"></td></tr>
+          <tr><td>Block 4</td> <td>Conv1D(512, k=3) + BN + ReLU</td>  <td class="mono">(61, 512)</td> <td class="note">Filter depth doubles once more</td></tr>
+          <tr><td></td>        <td>GlobalAvgPool1D</td>                <td class="mono">(512,)</td>    <td class="note">Averages across all 61 positions — no Flatten</td></tr>
+          <tr><td>Head</td>    <td>Dense(256) + ReLU + Dropout(0.4)</td><td class="mono">(256,)</td>  <td class="note">Adam lr = 0.0005</td></tr>
+          <tr><td>Output</td>  <td>Dense(8, softmax)</td>              <td class="mono">(8,)</td>      <td class="note">8 emotion classes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE -->
+  <div class="block reveal">
+    <div class="section-label">Performance detail</div>
+    <h2>Per-class recall &amp; <em>training</em></h2>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Per-class recall — augmented regime (acc=0.940)</div>
+        <table class="dim-table">
+          <thead><tr><th>Emotion</th><th>Recall (plain)</th><th>Recall (aug)</th></tr></thead>
+          <tbody>
+            <tr><td>Angry</td>    <td class="mono">0.97</td><td class="mono">0.94</td></tr>
+            <tr><td>Calm</td>     <td class="mono">0.96</td><td class="mono">0.96</td></tr>
+            <tr><td>Disgust</td>  <td class="mono">0.92</td><td class="mono">0.95</td></tr>
+            <tr><td>Fearful</td>  <td class="mono">0.97</td><td class="mono">0.93</td></tr>
+            <tr><td>Happy</td>    <td class="mono">0.77</td><td class="mono">0.95</td></tr>
+            <tr><td style="color:var(--salmon)">Neutral ⚠</td><td class="mono" style="color:var(--salmon)">0.82</td><td class="mono">0.85</td></tr>
+            <tr><td>Sad</td>      <td class="mono">0.86</td><td class="mono">0.92</td></tr>
+            <tr><td>Surprised</td><td class="mono">0.91</td><td class="mono">0.97</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:.75rem;color:rgba(34,39,62,.55);margin-top:1rem;line-height:1.5;">Augmentation pushes Neutral recall from 0.82 → 0.85, the best of all six models. Surprised and Disgust both reach 0.95+ — high-arousal emotions produce distinctive spectral patterns that GAP captures well.</p>
+      </div>
+
+      <div>
+        <div class="info-grid" style="margin-bottom:1.5rem;">
+          <div class="info-chip"><div class="info-chip-label">Optimiser</div><div class="info-chip-val">Adam</div><div class="info-chip-sub">lr = 0.0005</div></div>
+          <div class="info-chip"><div class="info-chip-label">Aug Δ acc</div><div class="info-chip-val" style="color:var(--pacific)">+3.70<span style="font-size:.7em">pp</span></div><div class="info-chip-sub">GAP scales well with data</div></div>
+          <div class="info-chip"><div class="info-chip-label">Weighted F1</div><div class="info-chip-val">0.9397</div><div class="info-chip-sub">augmented regime</div></div>
+          <div class="info-chip"><div class="info-chip-label">CREMA-D</div><div class="info-chip-val">19.9%</div><div class="info-chip-sub">−74.1pp drop</div></div>
+          <div class="info-chip"><div class="info-chip-label">Convergence</div><div class="info-chip-val">Slower</div><div class="info-chip-sub">BN finds flatter minima</div></div>
+          <div class="info-chip"><div class="info-chip-label">Param reduction</div><div class="info-chip-val">83%</div><div class="info-chip-sub">vs CNN-A</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Why slower convergence is better</div>
+          <p style="font-size:.84rem;color:rgba(34,39,62,.7);line-height:1.6;">CNN-A converges in 29 epochs — a warning sign on a small dataset. Fast convergence to a sharp local minimum generalises poorly. CNN-B, aided by Batch Normalisation and the lower learning rate (0.0005 vs 0.001), takes 62–82 epochs to converge, finding a flatter, more generalisable solution. The augmented model's +3.70pp gain confirms that the GAP head is not saturated and continues to benefit from more diverse training examples.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:1rem;margin-top:1rem;" class="reveal">
+    <a href="cnn_a.html" style="font-family:'DM Mono',monospace;font-size:.7rem;color:var(--pacific);text-decoration:none;border-bottom:1px solid rgba(92,158,171,.3);">← CNN-A</a>
+    <a href="bilstm.html" style="font-family:'DM Mono',monospace;font-size:.7rem;color:var(--pacific);text-decoration:none;border-bottom:1px solid rgba(92,158,171,.3);">BiLSTM →</a>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-left">MAI 604 · Deep Learning · Canadian University Dubai · 2026<br>Farnaz Azarparand · Rajeev Pandey · Hussein Aboueldahab</div>
+  <div class="footer-right"><a href="https://github.com/Farnaz4649/Speech_Emotion_Recognition_DL" target="_blank">github.com/Farnaz4649/Speech_Emotion_Recognition_DL</a></div>
+</footer>
+
+<script>
+const obs = new IntersectionObserver(entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }), { threshold: .1 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+/* ── BUILD DIAGRAM ── */
+const diagram = document.getElementById('cnnbDiagram');
+
+function makeConnector(delay) {
+  const wrap = document.createElement('div');
+  wrap.className = 'connector';
+  wrap.innerHTML = `<div class="connector-line"><div class="connector-dot" style="animation-delay:${delay}s"></div></div>`;
+  return wrap;
+}
+function makeLayer(type, label, sub, shape, w, h) {
+  const wrap = document.createElement('div');
+  wrap.className = 'layer-block';
+  const box = document.createElement('div');
+  box.className = `layer-box ltype-${type}`;
+  if (w) box.style.width = w + 'px';
+  box.style.height = (h || 64) + 'px';
+  box.innerHTML = label + (sub ? `<br><span style="font-size:.5rem;opacity:.65">${sub}</span>` : '');
+  wrap.appendChild(box);
+  if (shape) {
+    const s = document.createElement('div'); s.className = 'layer-shape'; s.textContent = shape;
+    wrap.appendChild(s);
+  }
+  const n = document.createElement('div'); n.className = 'layer-name'; n.textContent = type.replace('ltype-','');
+  wrap.appendChild(n);
+  box.title = label + (sub ? ' '+sub : '') + (shape ? ' → '+shape : '');
+  return wrap;
+}
+function makeBlock(label) {
+  const w = document.createElement('div');
+  w.className = 'conv-block-wrap';
+  const l = document.createElement('span');
+  l.className = 'conv-block-label'; l.textContent = label;
+  w.appendChild(l);
+  return w;
+}
+
+let d = 0;
+const s = 0.22;
+
+diagram.appendChild(makeLayer('input','Input','(524,1)','(524,1)',64,70));
+
+const blockDefs = [
+  { name:'Block 1 — 64 filters', conv:'Conv1D',f:'k=3, f=64', cs:'(522,64)', ps:'(261,64)' },
+  { name:'Block 2 — 128 filters',conv:'Conv1D',f:'k=3, f=128',cs:'(259,128)',ps:'(129,128)' },
+  { name:'Block 3 — 256 filters',conv:'Conv1D',f:'k=3, f=256',cs:'(127,256)',ps:'(63,256)'  },
+  { name:'Block 4 — 512 filters',conv:'Conv1D',f:'k=3, f=512',cs:'(61,512)', ps:'(512,)', gap:true },
+];
+
+blockDefs.forEach(b => {
+  diagram.appendChild(makeConnector(d += s));
+  const bw = makeBlock(b.name);
+  bw.appendChild(makeLayer('conv', b.conv, b.f, b.cs, 66, 70));
+  bw.appendChild(makeConnector(d += s));
+  bw.appendChild(makeLayer('bn', 'BN', 'batch norm', '', 52, 54));
+  bw.appendChild(makeConnector(d += s));
+  if (b.gap) {
+    bw.appendChild(makeLayer('gap','GlobalAvg','Pool1D', b.ps, 64, 64));
+  } else {
+    bw.appendChild(makeLayer('pool','MaxPool','pool=2', b.ps, 54, 54));
+    bw.appendChild(makeConnector(d += s));
+    bw.appendChild(makeLayer('dropout','Drop','0.2','', 50, 50));
+  }
+  diagram.appendChild(bw);
+});
+
+[['dense','Dense','256+ReLU','(256,)',66,64],['dropout','Dropout','0.4','(256,)',52,52],['output','Dense','8,softmax','(8,)',66,64]].forEach(l => {
+  diagram.appendChild(makeConnector(d += s));
+  diagram.appendChild(makeLayer(l[0],l[1],l[2],l[3],l[4],l[5]));
+});
+</script>
+</body>
+</html>

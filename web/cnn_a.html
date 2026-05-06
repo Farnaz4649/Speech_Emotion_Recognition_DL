@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN-A · Shallow Baseline — SER · MAI 604</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --indigo:  #22273e;
+    --pacific: #5c9eab;
+    --aqua:    #9ad2d1;
+    --blush:   #e2d7da;
+    --salmon:  #e09079;
+    --radius:  6px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--blush);
+    color: var(--indigo);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--indigo);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2.5rem; height: 52px;
+    border-bottom: 1px solid rgba(156,210,209,.15);
+  }
+  .nav-back {
+    font-family: 'DM Mono', monospace; font-size: .7rem;
+    color: var(--aqua); text-decoration: none;
+    letter-spacing: .08em; text-transform: uppercase;
+    display: flex; align-items: center; gap: .5rem;
+    transition: gap .2s;
+  }
+  .nav-back:hover { gap: .8rem; }
+  .nav-tag {
+    font-family: 'DM Mono', monospace; font-size: .68rem;
+    color: rgba(156,210,209,.45); letter-spacing: .06em;
+  }
+
+  /* ── PAGE HERO ── */
+  .page-hero {
+    background: var(--indigo);
+    padding: 4rem 2.5rem 3rem;
+    position: relative; overflow: hidden;
+  }
+  .page-hero::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(92,158,171,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(92,158,171,.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+  .page-hero-inner { position: relative; z-index: 1; max-width: 700px; }
+  .page-label {
+    font-family: 'DM Mono', monospace; font-size: .68rem;
+    color: var(--aqua); letter-spacing: .12em;
+    text-transform: uppercase; margin-bottom: 1rem;
+  }
+  .page-label::before { content: '// '; }
+  .page-hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    color: white; line-height: 1.1; margin-bottom: .8rem;
+  }
+  .page-hero h1 em { font-style: italic; color: var(--aqua); }
+  .page-hero p {
+    font-size: .95rem; color: rgba(156,210,209,.6);
+    font-weight: 300; max-width: 520px;
+  }
+
+  /* ── STAT ROW ── */
+  .stat-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    background: rgba(34,39,62,.6);
+    border-bottom: 1px solid rgba(156,210,209,.1);
+  }
+  .stat-cell {
+    padding: 1.6rem 1.8rem;
+    border-right: 1px solid rgba(156,210,209,.08);
+  }
+  .stat-cell:last-child { border-right: none; }
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem; color: var(--aqua); line-height: 1;
+  }
+  .stat-num sup { font-size: .55em; vertical-align: super; }
+  .stat-desc {
+    font-family: 'DM Mono', monospace; font-size: .62rem;
+    color: rgba(156,210,209,.5); letter-spacing: .07em;
+    text-transform: uppercase; line-height: 1.4; margin-top: .4rem;
+  }
+
+  /* ── MAIN ── */
+  main { max-width: 1100px; margin: 0 auto; padding: 4rem 2.5rem; }
+
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.5rem, 2.8vw, 2rem);
+    color: var(--indigo); line-height: 1.2; margin-bottom: .5rem;
+  }
+  h2 em { font-style: italic; color: var(--pacific); }
+
+  .section-label {
+    font-family: 'DM Mono', monospace; font-size: .66rem;
+    color: var(--pacific); letter-spacing: .1em;
+    text-transform: uppercase; margin-bottom: .8rem;
+  }
+  .section-label::before { content: '// '; }
+
+  .block { margin-bottom: 4rem; }
+
+  .card {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 1.8rem;
+  }
+  .card-title {
+    font-family: 'DM Mono', monospace; font-size: .66rem;
+    color: var(--pacific); letter-spacing: .1em;
+    text-transform: uppercase; margin-bottom: 1.2rem;
+  }
+  .card-title::before { content: '// '; }
+
+  /* ── ANIMATED LAYER DIAGRAM ── */
+  .diagram-scroll {
+    overflow-x: auto;
+    padding-bottom: 1rem;
+  }
+  .diagram {
+    display: flex; align-items: center;
+    gap: 0;
+    min-width: 1000px;
+    padding: 2.5rem 1.5rem;
+    position: relative;
+  }
+
+  /* connector line */
+  .connector {
+    flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center;
+    width: 36px; position: relative;
+  }
+  .connector-line {
+    width: 100%; height: 2px;
+    background: rgba(92,158,171,.3);
+    position: relative; overflow: visible;
+  }
+  /* animated dot on connector */
+  .connector-dot {
+    position: absolute;
+    top: -4px; left: -4px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--aqua);
+    box-shadow: 0 0 6px var(--aqua);
+    animation: travelDot 2.4s ease-in-out infinite;
+    opacity: 0;
+  }
+  @keyframes travelDot {
+    0%   { left: 0%;   opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+  }
+
+  /* layer blocks */
+  .layer-block {
+    flex-shrink: 0;
+    display: flex; flex-direction: column;
+    align-items: center; gap: .4rem;
+    position: relative;
+  }
+  .layer-box {
+    border-radius: 4px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: .6rem .5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: .58rem;
+    text-align: center;
+    line-height: 1.35;
+    transition: transform .2s, box-shadow .2s;
+    cursor: default;
+    position: relative;
+  }
+  .layer-box:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(34,39,62,.15);
+  }
+  .layer-name {
+    font-family: 'DM Mono', monospace;
+    font-size: .56rem;
+    color: rgba(34,39,62,.5);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-top: .3rem;
+    text-align: center;
+  }
+  .layer-shape {
+    font-family: 'DM Mono', monospace;
+    font-size: .54rem;
+    color: var(--pacific);
+    margin-top: .15rem;
+    text-align: center;
+  }
+
+  /* layer colours */
+  .ltype-input   { background: rgba(34,39,62,.08); border: 1.5px solid rgba(34,39,62,.2); color: var(--indigo); }
+  .ltype-conv    { background: rgba(92,158,171,.15); border: 1.5px solid var(--pacific); color: var(--indigo); width: 68px; }
+  .ltype-pool    { background: rgba(156,210,209,.2); border: 1.5px dashed var(--aqua); color: var(--indigo); width: 58px; }
+  .ltype-flatten { background: rgba(224,144,121,.12); border: 1.5px solid var(--salmon); color: var(--indigo); }
+  .ltype-dense   { background: rgba(34,39,62,.85); border: 1.5px solid var(--indigo); color: var(--aqua); }
+  .ltype-dropout { background: rgba(156,210,209,.08); border: 1.5px dashed rgba(156,210,209,.4); color: rgba(34,39,62,.6); }
+  .ltype-output  { background: var(--indigo); border: 2px solid var(--pacific); color: var(--aqua); }
+
+  /* block grouper */
+  .conv-block-wrap {
+    display: flex; align-items: center;
+    background: rgba(92,158,171,.04);
+    border: 1px solid rgba(92,158,171,.12);
+    border-radius: 6px;
+    padding: .8rem .5rem;
+    position: relative;
+  }
+  .conv-block-label {
+    position: absolute;
+    top: -10px; left: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: .52rem;
+    color: var(--pacific);
+    letter-spacing: .08em;
+    background: var(--blush);
+    padding: 0 .4rem;
+    text-transform: uppercase;
+  }
+
+  /* ── BOTTLENECK CALLOUT ── */
+  .bottleneck-box {
+    background: rgba(224,144,121,.08);
+    border: 1px solid rgba(224,144,121,.3);
+    border-radius: var(--radius);
+    padding: 1.4rem 1.8rem;
+    margin-top: 1.5rem;
+  }
+  .bottleneck-box .label {
+    font-family: 'DM Mono', monospace; font-size: .62rem;
+    color: var(--salmon); letter-spacing: .1em;
+    text-transform: uppercase; margin-bottom: .4rem;
+  }
+  .bottleneck-box p {
+    font-size: .85rem; color: rgba(34,39,62,.75); line-height: 1.6;
+  }
+
+  /* ── DIMENSION TABLE ── */
+  .dim-table {
+    width: 100%; border-collapse: collapse;
+    font-size: .84rem; background: white;
+    border-radius: var(--radius); overflow: hidden;
+    border: 1px solid rgba(92,158,171,.18);
+  }
+  .dim-table th {
+    background: var(--indigo); color: var(--aqua);
+    font-family: 'DM Mono', monospace; font-size: .62rem;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: .75rem 1rem; text-align: left; font-weight: 400;
+  }
+  .dim-table td {
+    padding: .7rem 1rem;
+    border-bottom: 1px solid rgba(92,158,171,.1);
+    color: var(--indigo); font-weight: 300;
+  }
+  .dim-table tr:last-child td { border-bottom: none; }
+  .dim-table tr:hover td { background: rgba(92,158,171,.04); }
+  .dim-table .mono { font-family: 'DM Mono', monospace; font-size: .8rem; color: var(--pacific); }
+  .dim-table .note { font-size: .78rem; color: rgba(34,39,62,.5); }
+
+  /* ── PER-CLASS TABLE ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+
+  /* ── TRAINING INFO ── */
+  .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .info-chip {
+    background: white;
+    border: 1px solid rgba(92,158,171,.18);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+  }
+  .info-chip-label {
+    font-family: 'DM Mono', monospace; font-size: .6rem;
+    color: var(--pacific); letter-spacing: .08em;
+    text-transform: uppercase; margin-bottom: .3rem;
+  }
+  .info-chip-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem; color: var(--indigo); line-height: 1;
+  }
+  .info-chip-sub {
+    font-size: .75rem; color: rgba(34,39,62,.5); margin-top: .2rem;
+  }
+
+  /* ── REVEAL ── */
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity .5s ease, transform .5s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--indigo);
+    border-top: 1px solid rgba(156,210,209,.1);
+    padding: 2rem 2.5rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-left {
+    font-family: 'DM Mono', monospace; font-size: .63rem;
+    color: rgba(156,210,209,.45); letter-spacing: .07em; line-height: 1.7;
+  }
+  .footer-right a {
+    font-family: 'DM Mono', monospace; font-size: .66rem;
+    color: var(--pacific); text-decoration: none;
+    border-bottom: 1px solid rgba(92,158,171,.3);
+    transition: border-color .2s;
+  }
+  .footer-right a:hover { border-color: var(--pacific); }
+
+  @media (max-width: 800px) {
+    .stat-row { grid-template-columns: 1fr 1fr; }
+    .two-col, .info-grid { grid-template-columns: 1fr; }
+    main { padding: 3rem 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-back" href="index.html">← Back to overview</a>
+  <span class="nav-tag">Architecture 01 of 03</span>
+</nav>
+
+<div class="page-hero">
+  <div class="page-hero-inner">
+    <div class="page-label">Architecture · CNN-A</div>
+    <h1>CNN-A · <em>Shallow Baseline</em></h1>
+    <p>A three-block 1D convolutional network with a Flatten-to-Dense head. High parameter count, prone to overfitting on small datasets.</p>
+  </div>
+  <!-- stat row inside hero -->
+  <div class="stat-row" style="margin-top:2.5rem;border-radius:var(--radius);">
+    <div class="stat-cell">
+      <div class="stat-num">89.41<sup>%</sup></div>
+      <div class="stat-desc">Accuracy · plain</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">89.76<sup>%</sup></div>
+      <div class="stat-desc">Accuracy · augmented</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">2.24<sup>M</sup></div>
+      <div class="stat-desc">Parameters</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">29 / 37</div>
+      <div class="stat-desc">Epochs (plain / aug)</div>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- LAYER DIAGRAM -->
+  <div class="block reveal">
+    <div class="section-label">Layer architecture</div>
+    <h2>Animated <em>layer diagram</em></h2>
+    <p style="font-size:.88rem;color:rgba(34,39,62,.6);margin-bottom:1.5rem;font-weight:300;">Hover any layer block for details. The moving light shows data flowing through the network.</p>
+
+    <div class="card">
+      <div class="card-title">CNN-A · input (524,1) → output (8,) softmax · 2,238,344 parameters</div>
+      <div class="diagram-scroll">
+        <div class="diagram" id="cnnaDiagram">
+          <!-- built by JS -->
+        </div>
+      </div>
+
+      <div class="bottleneck-box">
+        <div class="label">⚠ Bottleneck — the Flatten problem</div>
+        <p>After Block 3's MaxPool, the output shape is (62, 256). Flattening produces a 15,872-dimensional vector. The subsequent Dense(128) layer alone adds 15,872 × 128 = 2,031,744 weights — 91% of the total parameter count. This massive head is the primary source of overfitting on a dataset of 6,048 training samples.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIMENSION TRACE -->
+  <div class="block reveal">
+    <div class="section-label">Dimensionality trace</div>
+    <h2>Layer-by-layer <em>shapes</em></h2>
+    <div class="card">
+      <div class="card-title">CNN-A · layer-by-layer dimensionality trace</div>
+      <table class="dim-table">
+        <thead>
+          <tr><th>Stage</th><th>Operation</th><th>Output shape</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Input</td>    <td>Input</td>                    <td class="mono">(524, 1)</td>  <td class="note">Flat feature vector, channel dim added for Conv1D</td></tr>
+          <tr><td>Block 1</td>  <td>Conv1D(64, k=5) + ReLU</td>  <td class="mono">(520, 64)</td> <td class="note">floor((524−5)/1)+1 = 520</td></tr>
+          <tr><td></td>         <td>MaxPool1D(pool=2)</td>        <td class="mono">(260, 64)</td> <td class="note">Halves the sequence length</td></tr>
+          <tr><td>Block 2</td>  <td>Conv1D(128, k=5) + ReLU</td> <td class="mono">(256, 128)</td><td class="note">floor((260−5)/1)+1 = 256</td></tr>
+          <tr><td></td>         <td>MaxPool1D(pool=2)</td>        <td class="mono">(128, 128)</td><td class="note"></td></tr>
+          <tr><td>Block 3</td>  <td>Conv1D(256, k=5) + ReLU</td> <td class="mono">(124, 256)</td><td class="note">floor((128−5)/1)+1 = 124</td></tr>
+          <tr><td></td>         <td>MaxPool1D(pool=2)</td>        <td class="mono">(62, 256)</td> <td class="note"></td></tr>
+          <tr><td>Head</td>     <td>Flatten</td>                  <td class="mono">(15,872)</td>  <td class="note">62 × 256 — the bottleneck</td></tr>
+          <tr><td></td>         <td>Dense(128) + ReLU</td>        <td class="mono">(128,)</td>    <td class="note">Adam lr=0.001</td></tr>
+          <tr><td></td>         <td>Dropout(0.4)</td>             <td class="mono">(128,)</td>    <td class="note">Applied during training only</td></tr>
+          <tr><td>Output</td>   <td>Dense(8, softmax)</td>        <td class="mono">(8,)</td>      <td class="note">8 emotion classes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PER-CLASS + TRAINING -->
+  <div class="block reveal">
+    <div class="section-label">Performance detail</div>
+    <h2>Per-class recall &amp; <em>training</em></h2>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Per-class recall — augmented regime (acc=0.898)</div>
+        <table class="dim-table">
+          <thead><tr><th>Emotion</th><th>Recall (plain)</th><th>Recall (aug)</th></tr></thead>
+          <tbody>
+            <tr><td>Angry</td>    <td class="mono">0.91</td><td class="mono">0.95</td></tr>
+            <tr><td>Calm</td>     <td class="mono">0.96</td><td class="mono">0.95</td></tr>
+            <tr><td>Disgust</td>  <td class="mono">0.97</td><td class="mono">0.94</td></tr>
+            <tr><td>Fearful</td>  <td class="mono">0.90</td><td class="mono">0.91</td></tr>
+            <tr><td>Happy</td>    <td class="mono">0.91</td><td class="mono">0.90</td></tr>
+            <tr><td style="color:var(--salmon)">Neutral ⚠</td><td class="mono" style="color:var(--salmon)">0.58</td><td class="mono" style="color:var(--salmon)">0.65</td></tr>
+            <tr><td>Sad</td>      <td class="mono">0.87</td><td class="mono">0.79</td></tr>
+            <tr><td>Surprised</td><td class="mono">0.90</td><td class="mono">0.97</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:.75rem;color:var(--salmon);margin-top:1rem;line-height:1.5;">Neutral is the hardest class — confusion with Calm is primary. Both share low arousal and low valence, making them hard to separate from statistical summaries alone.</p>
+      </div>
+
+      <div>
+        <div class="info-grid" style="margin-bottom:1.5rem;">
+          <div class="info-chip">
+            <div class="info-chip-label">Optimiser</div>
+            <div class="info-chip-val">Adam</div>
+            <div class="info-chip-sub">lr = 0.001</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">Loss</div>
+            <div class="info-chip-val">Cat. CE</div>
+            <div class="info-chip-sub">categorical cross-entropy</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">Early stop</div>
+            <div class="info-chip-val">Yes</div>
+            <div class="info-chip-sub">patience on val loss</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">Aug Δ acc</div>
+            <div class="info-chip-val">+0.35<span style="font-size:.7em">pp</span></div>
+            <div class="info-chip-sub">minimal benefit</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">Weighted F1</div>
+            <div class="info-chip-val">0.898</div>
+            <div class="info-chip-sub">augmented regime</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">CREMA-D</div>
+            <div class="info-chip-val">~16%</div>
+            <div class="info-chip-sub">cross-dataset collapse</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Why augmentation barely helps CNN-A</div>
+          <p style="font-size:.84rem;color:rgba(34,39,62,.7);line-height:1.6;">With 2.24M parameters and only 6,048 training samples, CNN-A is already in an extreme overfitting regime. The massive Dense head memorises training recordings rather than learning generalisable acoustic patterns. Adding more data variants (+0.35pp) cannot overcome a fundamentally overparameterised architecture — the bottleneck must be redesigned, not just fed more data. CNN-B addresses this directly.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACK NAV -->
+  <div style="display:flex;gap:1rem;margin-top:1rem;" class="reveal">
+    <a href="index.html" style="font-family:'DM Mono',monospace;font-size:.7rem;color:var(--pacific);text-decoration:none;border-bottom:1px solid rgba(92,158,171,.3);">← Overview</a>
+    <a href="cnn_b.html" style="font-family:'DM Mono',monospace;font-size:.7rem;color:var(--pacific);text-decoration:none;border-bottom:1px solid rgba(92,158,171,.3);">CNN-B →</a>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-left">
+    MAI 604 · Deep Learning · Canadian University Dubai · 2026<br>
+    Farnaz Azarparand · Rajeev Pandey · Hussein Aboueldahab
+  </div>
+  <div class="footer-right">
+    <a href="https://github.com/Farnaz4649/Speech_Emotion_Recognition_DL" target="_blank">github.com/Farnaz4649/Speech_Emotion_Recognition_DL</a>
+  </div>
+</footer>
+
+<script>
+/* ── REVEAL ── */
+const obs = new IntersectionObserver(
+  entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }),
+  { threshold: .1 }
+);
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+/* ── BUILD DIAGRAM ── */
+const diagram = document.getElementById('cnnaDiagram');
+
+function makeConnector(delay) {
+  const wrap = document.createElement('div');
+  wrap.className = 'connector';
+  wrap.innerHTML = `
+    <div class="connector-line">
+      <div class="connector-dot" style="animation-delay:${delay}s"></div>
+    </div>`;
+  return wrap;
+}
+
+function makeLayer(type, label, sublabel, shape, heightPx) {
+  const wrap = document.createElement('div');
+  wrap.className = 'layer-block';
+  const box = document.createElement('div');
+  box.className = `layer-box ltype-${type}`;
+  box.style.height = (heightPx || 60) + 'px';
+  box.style.width = box.style.width || '68px';
+  box.textContent = label;
+  if (sublabel) box.innerHTML += `<br><span style="font-size:.5rem;opacity:.6">${sublabel}</span>`;
+  wrap.appendChild(box);
+  if (shape) {
+    const s = document.createElement('div');
+    s.className = 'layer-shape';
+    s.textContent = shape;
+    wrap.appendChild(s);
+  }
+  // tooltip on hover via title
+  box.title = label + (sublabel ? ' ' + sublabel : '') + (shape ? ' → ' + shape : '');
+  return wrap;
+}
+
+function makeBlockWrap(label) {
+  const wrap = document.createElement('div');
+  wrap.className = 'conv-block-wrap';
+  const lbl = document.createElement('span');
+  lbl.className = 'conv-block-label';
+  lbl.textContent = label;
+  wrap.appendChild(lbl);
+  return wrap;
+}
+
+// --- Layers ---
+const layers = [
+  { type: 'input',   label: 'Input',     sub: '(524,1)',    shape: '(524, 1)',   h: 70 },
+];
+
+const blocks = [
+  { name: 'Block 1 — 64 filters',  conv: ['Conv1D','k=5, f=64'], pool: ['MaxPool','pool=2'], cs: '(520,64)', ps: '(260,64)' },
+  { name: 'Block 2 — 128 filters', conv: ['Conv1D','k=5, f=128'],pool: ['MaxPool','pool=2'], cs: '(256,128)',ps: '(128,128)' },
+  { name: 'Block 3 — 256 filters', conv: ['Conv1D','k=5, f=256'],pool: ['MaxPool','pool=2'], cs: '(124,256)',ps: '(62,256)'  },
+];
+
+const head = [
+  { type: 'flatten', label: 'Flatten', sub: '62×256',   shape: '(15,872)', h: 80 },
+  { type: 'dense',   label: 'Dense',   sub: '128+ReLU', shape: '(128,)',   h: 72 },
+  { type: 'dropout', label: 'Dropout', sub: '0.4',      shape: '(128,)',   h: 56 },
+  { type: 'output',  label: 'Dense',   sub: '8, softmax',shape: '(8,)',    h: 64 },
+];
+
+let delay = 0;
+const step = 0.28;
+
+// Input
+diagram.appendChild(makeLayer('input', 'Input', '(524,1)', '(524, 1)', 70));
+
+blocks.forEach((b, bi) => {
+  diagram.appendChild(makeConnector(delay += step));
+  const bwrap = makeBlockWrap(b.name);
+
+  bwrap.appendChild(makeLayer('conv', b.conv[0], b.conv[1], b.cs, 72));
+  bwrap.appendChild(makeConnector(delay += step));
+  bwrap.appendChild(makeLayer('pool', b.pool[0], b.pool[1], b.ps, 56));
+  diagram.appendChild(bwrap);
+});
+
+head.forEach(l => {
+  diagram.appendChild(makeConnector(delay += step));
+  diagram.appendChild(makeLayer(l.type, l.label, l.sub, l.shape, l.h));
+});
+
+// layer name labels
+diagram.querySelectorAll('.layer-block').forEach(lb => {
+  const box = lb.querySelector('.layer-box');
+  const n = document.createElement('div');
+  n.className = 'layer-name';
+  n.textContent = box.className.includes('conv') ? 'conv' :
+                  box.className.includes('pool') ? 'pool' :
+                  box.className.includes('flatten') ? 'flatten' :
+                  box.className.includes('dropout') ? 'dropout' :
+                  box.className.includes('output') ? 'output' :
+                  box.className.includes('dense') ? 'dense' : '';
+  lb.appendChild(n);
+});
+</script>
+</body>
+</html>
