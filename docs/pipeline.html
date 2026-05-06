@@ -876,14 +876,6 @@
       <strong>Why augmentation precedes splitting:</strong> applying augmentation after the train/val/test split would risk leaking augmented variants of training clips into the validation or test sets. By augmenting first on the full 2,880-clip corpus and splitting afterwards, augmented samples are distributed proportionally across all three subsets, maintaining strict evaluation integrity.
     </div>
 
-    <!-- Pipeline flowchart -->
-    <div style="margin-top:2.5rem;" class="reveal">
-      <p class="card-title" style="margin-bottom:1rem;">// Full pipeline flowchart</p>
-      <div class="pipeline-img-wrap">
-        <img src="assets/audio_pipeline_flowchart.png"
-             alt="Audio processing pipeline flowchart"
-             onerror="this.outerHTML='<p style=\'padding:2rem;font-size:.85rem;color:rgba(34,39,62,.5);text-align:center;\'>Copy <code>Audio_Processing_Pipeline*.png</code> to <code>web/assets/audio_pipeline_flowchart.png</code></p>'">
-      </div>
     </div>
 
   </div>
