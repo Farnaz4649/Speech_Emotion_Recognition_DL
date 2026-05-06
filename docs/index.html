@@ -925,16 +925,53 @@
     <span class="stat-desc">CREMA-D accuracy drop<br>cross-dataset generalisation gap</span>
   </div>
 </div>
+
+<!-- EDA -->
+<section id="eda" style="padding:4rem 2.5rem;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="section-label">Dataset · EDA</div>
+    <h2>RAVDESS — <em>dataset overview</em></h2>
+    <p class="section-intro reveal">
+      1,440 recordings from 24 professional actors (12 male, 12 female), covering 8 emotion
+      classes at two intensity levels. The dataset is deliberately balanced — neutral is the
+      only class with 192 samples rather than 384, because it has no "strong" intensity variant.
+      Balance means no class-weighting is needed during training.
+    </p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start;">
+
+      <!-- Waveform grid image -->
+      <div style="background:white;border:1px solid rgba(92,158,171,.18);border-radius:6px;overflow:hidden;">
+        <div style="background:var(--indigo);padding:.6rem 1rem;">
+          <span style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--aqua);letter-spacing:.08em;text-transform:uppercase;">// sample waveforms per emotion class</span>
+        </div>
+        <img src="assets/emotion_waveforms.png"
+             alt="Waveforms for all 8 emotion classes"
+             style="width:100%;display:block;"
+             onerror="this.style.display='none'">
+      </div>
+
+      <!-- Gender/class distribution bar chart -->
+      <div style="background:white;border:1px solid rgba(92,158,171,.18);border-radius:6px;padding:1.8rem;">
+        <div style="font-family:'DM Mono',monospace;font-size:.66rem;color:var(--pacific);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1.2rem;">// samples per emotion class · male vs female split</div>
+        <canvas id="chartEDA" height="280"></canvas>
+        <p style="font-size:.75rem;color:rgba(34,39,62,.5);margin-top:1rem;line-height:1.5;">All classes contain 192 male + 192 female recordings (384 total) except Neutral, which has 96 + 96 = 192, as there is no strong-intensity neutral variant in RAVDESS.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+<hr class="section-divider">
   
 <!-- PIPELINE -->
 <section id="pipeline">
   <div class="section-label">Pipeline overview</div>
 
   <!-- PIPELINE OVERVIEW IMAGE -->
-<div style="background: var(--indigo); padding: 1.5rem 2.5rem; box-sizing: border-box; overflow: hidden;">
+<div style="background:var(--indigo);padding:1.5rem 2.5rem 0;">
   <img src="assets/audio_pipeline_flowchart.png"
        alt="Full pipeline flowchart"
-       style="max-width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 6px;"
+       style="width:100%;max-width:980px;display:block;margin:0 auto;border-radius:6px;"
        onerror="this.style.display='none'">
 </div>
   
@@ -1931,6 +1968,51 @@ function showError(msg) {
   script.onerror = () => { statusEl.textContent = '⚠ TensorFlow.js failed to load. Check your internet connection.'; };
   document.head.appendChild(script);
 })();
+
+  /* ═══════════════════════════════════════════
+   EDA CHART
+═══════════════════════════════════════════ */
+new Chart(document.getElementById('chartEDA'), {
+  type: 'bar',
+  data: {
+    labels: ['Angry','Calm','Disgust','Fearful','Happy','Neutral','Sad','Surprised'],
+    datasets: [
+      {
+        label: 'Female',
+        data: [192, 192, 192, 192, 192, 96, 192, 192],
+        backgroundColor: 'rgba(224,144,121,.55)',
+        borderColor: 'rgba(224,144,121,.8)',
+        borderWidth: 1,
+        borderRadius: 2,
+      },
+      {
+        label: 'Male',
+        data: [192, 192, 192, 192, 192, 96, 192, 192],
+        backgroundColor: 'rgba(92,158,171,.45)',
+        borderColor: 'rgba(92,158,171,.7)',
+        borderWidth: 1,
+        borderRadius: 2,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 9 } } },
+      y: {
+        stacked: true,
+        min: 0, max: 420,
+        grid: { color: 'rgba(92,158,171,.1)' },
+        ticks: { font: { size: 9 }, stepSize: 100 },
+      },
+    },
+    plugins: {
+      legend: { position: 'top', labels: { font: { size: 10 }, usePointStyle: true, padding: 12 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}` } },
+    },
+  },
+});
+
 </script>
 </body>
 </html>
