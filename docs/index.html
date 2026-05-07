@@ -1515,16 +1515,19 @@ EMOTIONS.forEach(em => {
 
 function selectAudioCard(card, em) {
   if (activeAudio) { activeAudio.pause(); activeAudio.currentTime = 0; }
-  if (activeCard)  { activeCard.classList.remove('selected','playing'); }
-  card.classList.add('selected','playing');
+  if (activeCard)  { activeCard.classList.remove('selected', 'playing'); }
+  card.classList.add('selected', 'playing');
   activeCard = card;
 
-  const audio = new Audio(`audio_samples/${em.file}`);
+  const currentFile = em.files[sampleIndex];
+  const audio = new Audio(`audio_samples/${currentFile}`);
   activeAudio = audio;
   audio.play().catch(() => {});
   audio.addEventListener('ended', () => card.classList.remove('playing'));
 
-  runInferenceOnFile(`audio_samples/${em.file}`);
+  // Build the key e.g. "angry_1" or "angry_2" (sampleIndex is 0-based, keys are 1-based)
+  const lstmKey = `${em.label.toLowerCase()}_${sampleIndex + 1}`;
+  runInferenceOnFile(`audio_samples/${currentFile}`, lstmKey);
 }
 
 function resetRecordingsDemo() {
@@ -1544,37 +1547,33 @@ let modelsReady = false;
 
 const statusEl = document.getElementById('model-loading-status');
 
+let cnnSession = null;
+let lstmPrecomputed = null;
+
 async function loadModels() {
   try {
-    const tf = window.tf;
-    if (!tf) { statusEl.textContent = '⚠ TensorFlow.js not loaded — demo unavailable.'; return; }
-
     statusEl.textContent = '⏳ Loading CNN-B model...';
-    // cnnModel = await tf.loadLayersModel('models/cnn_b/model.json');
-    statusEl.textContent = '⏳ Loading CNN-B model...';
-    const cnnUrl = new URL('models/cnn_b/model.json', window.location.href).href;
+    const cnnUrl = new URL('models/cnn_b.onnx', window.location.href).href;
     console.log('Loading CNN-B from:', cnnUrl);
-    cnnModel = await tf.loadLayersModel(cnnUrl);
+    cnnSession = await ort.InferenceSession.create(cnnUrl, { executionProviders: ['wasm'] });
 
-    statusEl.textContent = '⏳ Loading BiLSTM model...';
-    // lstmModel = await tf.loadLayersModel('models/lstm/model.json');
-    statusEl.textContent = '⏳ Loading BiLSTM model...';
-    const lstmUrl = new URL('models/lstm/model.json', window.location.href).href;
-    console.log('Loading BiLSTM from:', lstmUrl);
-    lstmModel = await tf.loadLayersModel(lstmUrl);
-
-    statusEl.textContent = '⏳ Loading scalers...';
-    const [scalersResp, configResp] = await Promise.all([
-      fetch('models/scalers.json'),
-      fetch('models/config.json'),
+    statusEl.textContent = '⏳ Loading precomputed BiLSTM results...';
+    const [scalersResp, configResp, lstmResp] = await Promise.all([
+      fetch(new URL('models/scalers.json',          window.location.href).href),
+      fetch(new URL('models/config.json',           window.location.href).href),
+      fetch(new URL('models/lstm_precomputed.json', window.location.href).href),
     ]);
-    scalers = await scalersResp.json();
-    config  = await configResp.json();
+    scalers         = await scalersResp.json();
+    config          = await configResp.json();
+    lstmPrecomputed = await lstmResp.json();
 
     modelsReady = true;
-    statusEl.innerHTML = '✓ <span style="color:var(--aqua)">Models ready</span> — CNN-B (365K params) + BiLSTM (437K params) loaded.';
+    statusEl.innerHTML =
+      '✓ <span style="color:var(--aqua)">CNN-B — live inference via ONNX</span>' +
+      ' &nbsp;·&nbsp; ' +
+      '<span style="color:var(--aqua)">BiLSTM — pre-computed on original model</span>';
   } catch (err) {
-    statusEl.textContent = '⚠ Could not load models. Ensure the /models/ folder is deployed alongside these HTML files.';
+    statusEl.textContent = '⚠ Could not load models: ' + err.message;
     console.error('Model load error:', err);
   }
 }
@@ -1818,48 +1817,43 @@ function applyScaler(data, mean, std) {
   return data.map((v, i) => (v - mean[i % mean.length]) / (std[i % std.length] + 1e-8));
 }
 
-async function runInference(X_cnn_raw, X_lstm_raw) {
-  if (!modelsReady) throw new Error('Models not loaded yet');
-  const tf = window.tf;
+async function runInference(X_cnn_raw, X_lstm_raw, lstmKey) {
+  if (!modelsReady) throw new Error('Models not loaded yet.');
 
-  // Scale CNN
+  // CNN-B: live ONNX inference
   const cnnMean = scalers.cnn.mean, cnnStd = scalers.cnn.std;
-  const X_cnn_scaled = applyScaler(Array.from(X_cnn_raw), cnnMean, cnnStd);
-  const cnnTensor = tf.tensor3d([X_cnn_scaled.map(v => [v])]);  // (1, 524, 1)
+  const X_cnn_scaled = Array.from(X_cnn_raw).map((v, i) =>
+    (v - cnnMean[i % cnnMean.length]) / (cnnStd[i % cnnStd.length] + 1e-8)
+  );
+  const cnnFlat   = new Float32Array(X_cnn_scaled);
+  const cnnTensor = new ort.Tensor('float32', cnnFlat, [1, 524, 1]);
+  const cnnResult = await cnnSession.run({ [cnnSession.inputNames[0]]: cnnTensor });
+  const cnnProbs  = Array.from(Object.values(cnnResult)[0].data);
 
-  // Scale LSTM
-  const lstmMean = scalers.lstm.mean, lstmStd = scalers.lstm.std;
-  const X_lstm_arr = Array.from(X_lstm_raw);
-  const X_lstm_scaled = applyScaler(X_lstm_arr, lstmMean, lstmStd);
-  const lstmTensor = tf.tensor3d(
-    Array.from({length: MAX_FRAMES}, (_, t) => Array.from({length: 120}, (_, k) => X_lstm_scaled[t*120+k])),
-  ).expandDims(0); // (1, 130, 120)
+  // BiLSTM: look up precomputed result by key (e.g. "angry_1", "calm_2")
+  const lstmEntry = lstmKey && lstmPrecomputed ? lstmPrecomputed[lstmKey] : null;
+  const lstmProbs = lstmEntry ? lstmEntry.probs : null;
 
-  const [cnnProbs, lstmProbs] = await Promise.all([
-    cnnModel.predict(cnnTensor).data(),
-    lstmModel.predict(lstmTensor).data(),
-  ]);
-
-  cnnTensor.dispose(); lstmTensor.dispose();
-  return { cnnProbs: Array.from(cnnProbs), lstmProbs: Array.from(lstmProbs) };
+  return { cnnProbs, lstmProbs };
 }
 
-async function runInferenceOnFile(url) {
+async function runInferenceOnFile(url, lstmKey) {
   if (!modelsReady) { showError('Models are still loading. Please wait a moment.'); return; }
   showLoading();
   try {
-    const resp = await fetch(url);
+    const resp     = await fetch(url);
     const arrayBuf = await resp.arrayBuffer();
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
     const decoded  = await audioCtx.decodeAudioData(arrayBuf);
     const samples  = decoded.getChannelData(0);
     const { X_cnn, X_lstm } = extractFeaturesFromBuffer(samples);
-    const { cnnProbs, lstmProbs } = await runInference(X_cnn, X_lstm);
+    const { cnnProbs, lstmProbs } = await runInference(X_cnn, X_lstm, lstmKey);
     hideLoading();
     displayPredictions(cnnProbs, lstmProbs);
   } catch(err) {
     hideLoading();
     showError('Could not process audio file: ' + err.message);
+    console.error(err);
   }
 }
 
@@ -1926,7 +1920,7 @@ async function processLiveBlob(blob) {
     const decoded  = await audioCtx.decodeAudioData(arrayBuf);
     const samples  = decoded.getChannelData(0);
     const { X_cnn, X_lstm } = extractFeaturesFromBuffer(samples);
-    const { cnnProbs, lstmProbs } = await runInference(X_cnn, X_lstm);
+    const { cnnProbs, lstmProbs } = await runInference(X_cnn, X_lstm, null);
     hideLoading();
     displayPredictions(cnnProbs, lstmProbs);
   } catch(err) {
@@ -1952,46 +1946,64 @@ function displayPredictions(cnnProbs, lstmProbs) {
   const output = document.getElementById('predictionOutput');
   output.classList.add('visible');
 
-  const cnnTop  = CLASS_NAMES[cnnProbs.indexOf(Math.max(...cnnProbs))];
-  const lstmTop = CLASS_NAMES[lstmProbs.indexOf(Math.max(...lstmProbs))];
-
+  const cnnTop = CLASS_NAMES[cnnProbs.indexOf(Math.max(...cnnProbs))];
   document.getElementById('cnnTopLabel').innerHTML =
     `${EMOTION_EMOJIS[cnnTop]} ${cnnTop} <span>${(Math.max(...cnnProbs)*100).toFixed(1)}%</span>`;
-  document.getElementById('lstmTopLabel').innerHTML =
-    `${EMOTION_EMOJIS[lstmTop]} ${lstmTop} <span>${(Math.max(...lstmProbs)*100).toFixed(1)}%</span>`;
 
-  const barColors = (probs) => probs.map((p, i) =>
-    CLASS_NAMES[i] === CLASS_NAMES[probs.indexOf(Math.max(...probs))]
-      ? 'rgba(92,158,171,.7)'
-      : 'rgba(156,210,209,.25)'
+  const barColors = (probs) => probs.map((_, i) =>
+    i === probs.indexOf(Math.max(...probs))
+      ? 'rgba(92,158,171,.7)' : 'rgba(156,210,209,.25)'
   );
-
   const chartCfg = (probs) => ({
     type: 'bar',
     data: {
-      labels: CLASS_NAMES.map(c => c.charAt(0).toUpperCase()+c.slice(1)),
+      labels: CLASS_NAMES.map(c => c.charAt(0).toUpperCase() + c.slice(1)),
       datasets: [{
-        data: probs.map(p => (p*100).toFixed(1)),
+        data: probs.map(p => (p * 100).toFixed(1)),
         backgroundColor: barColors(probs),
         borderColor: 'rgba(92,158,171,.4)',
-        borderWidth: 1,
-        borderRadius: 3,
+        borderWidth: 1, borderRadius: 3,
       }],
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } },
+      },
       scales: {
-        y: { min:0, max:100, grid: { color:'rgba(156,210,209,.12)' }, ticks: { color:'rgba(156,210,209,.6)', font:{size:9}, callback: v=>v+'%' } },
-        x: { grid: { display:false }, ticks: { color:'rgba(156,210,209,.7)', font:{size:9} } },
+        y: { min: 0, max: 100, grid: { color: 'rgba(156,210,209,.12)' },
+             ticks: { color: 'rgba(156,210,209,.6)', font: { size: 9 }, callback: v => v + '%' } },
+        x: { grid: { display: false },
+             ticks: { color: 'rgba(156,210,209,.7)', font: { size: 9 } } },
       },
     },
   });
 
-  if (cnnChart)  { cnnChart.destroy(); }
-  if (lstmChart) { lstmChart.destroy(); }
-  cnnChart  = new Chart(document.getElementById('chartCNN'),  chartCfg(cnnProbs));
-  lstmChart = new Chart(document.getElementById('chartLSTM'), chartCfg(lstmProbs));
+  if (cnnChart) cnnChart.destroy();
+  cnnChart = new Chart(document.getElementById('chartCNN'), chartCfg(cnnProbs));
+
+  if (lstmProbs) {
+    const lstmTop = CLASS_NAMES[lstmProbs.indexOf(Math.max(...lstmProbs))];
+    document.getElementById('lstmTopLabel').innerHTML =
+      `${EMOTION_EMOJIS[lstmTop]} ${lstmTop} <span>${(Math.max(...lstmProbs)*100).toFixed(1)}%</span>`;
+    document.getElementById('chartLSTM').style.display = '';
+    const existingNote = document.querySelector('.lstm-note');
+    if (existingNote) existingNote.remove();
+    if (lstmChart) lstmChart.destroy();
+    lstmChart = new Chart(document.getElementById('chartLSTM'), chartCfg(lstmProbs));
+  } else {
+    document.getElementById('lstmTopLabel').innerHTML =
+      '<span style="font-size:.72rem;color:rgba(156,210,209,.35);font-family:\'DM Mono\',monospace;">select a test recording above</span>';
+    document.getElementById('chartLSTM').style.display = 'none';
+    if (!document.querySelector('.lstm-note')) {
+      const div = document.createElement('div');
+      div.className = 'lstm-note';
+      div.style.cssText = 'font-size:.78rem;color:rgba(156,210,209,.4);line-height:1.65;padding:.8rem 0;font-family:\'DM Sans\',sans-serif;';
+      div.textContent = 'BiLSTM results are pre-computed from the original trained model and shown alongside live CNN-B inference for the test recordings. Live BiLSTM inference is not available in the browser due to GPU op constraints.';
+      document.getElementById('chartLSTM').parentNode.appendChild(div);
+    }
+  }
 }
 
 function resetPredictionUI() {
@@ -2018,12 +2030,17 @@ function showError(msg) {
 /* ═══════════════════════════════════════════
    BOOT
 ═══════════════════════════════════════════ */
-// Load TF.js then models
-(function loadTFJS() {
+// Load TF.js then models - replaced with precomputed
+(function loadONNX() {
   const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js';
-  script.onload = () => loadModels();
-  script.onerror = () => { statusEl.textContent = '⚠ TensorFlow.js failed to load. Check your internet connection.'; };
+  script.src = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js';
+  script.onload = () => {
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+    loadModels();
+  };
+  script.onerror = () => {
+    statusEl.textContent = '⚠ ONNX Runtime failed to load. Check your internet connection.';
+  };
   document.head.appendChild(script);
 })();
 
