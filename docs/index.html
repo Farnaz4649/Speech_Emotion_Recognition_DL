@@ -1298,7 +1298,7 @@
   <div class="demo-inner">
     <div class="section-label" style="color:var(--aqua);">// Live demo</div>
     <h2 style="color:white;margin-bottom:.5rem;">Try the models yourself</h2>
-    <p style="color:rgba(156,210,209,.6);font-size:.88rem;margin-bottom:2rem;font-weight:300;">Both CNN-B and BiLSTM (augmented) run directly in your browser via TensorFlow.js. No data leaves your device.</p>
+    <p style="color:rgba(156,210,209,.6);font-size:.88rem;margin-bottom:2rem;font-weight:300;">Both CNN-B and BiLSTM (augmented) predictions come from the original trained Keras models, run on RAVDESS test samples. CNN-B also runs live in-browser for the microphone test.</p>
 
     <div id="model-loading-status" style="font-family:'DM Mono',monospace;font-size:.72rem;color:rgba(156,210,209,.5);margin-bottom:1.5rem;letter-spacing:.06em;">
       ⏳ Loading models...
@@ -1526,9 +1526,9 @@ function selectAudioCard(card, em) {
   audio.play().catch(() => {});
   audio.addEventListener('ended', () => card.classList.remove('playing'));
 
-  // key matches precomputed JSON: "angry_1", "angry_2", etc.
-  const lstmKey = `${em.label.toLowerCase()}_${sampleIndex + 1}`;
-  runInferenceOnFile(`audio_samples/${currentFile}`, lstmKey);
+  // key: "angry_1" or "angry_2" — matches both precomputed JSON files
+  const key = `${em.label.toLowerCase()}_${sampleIndex + 1}`;
+  runInferenceOnFile(`audio_samples/${currentFile}`, key);
 }
 
 function resetRecordingsDemo() {
@@ -1545,9 +1545,10 @@ function resetRecordingsDemo() {
   resetPredictionUI();
 }
 
-let scalers     = null;
-let config      = null;
-let modelsReady = false;
+let scalers         = null;
+let config          = null;
+let modelsReady     = false;
+let cnnPrecomputed  = null;
 
 const statusEl = document.getElementById('model-loading-status');
 
@@ -1556,26 +1557,28 @@ let lstmPrecomputed = null;
 
 async function loadModels() {
   try {
-    statusEl.textContent = '⏳ Loading CNN-B model...';
-    const cnnUrl = new URL('models/cnn_b.onnx', window.location.href).href;
-    console.log('Loading CNN-B from:', cnnUrl);
-    cnnSession = await ort.InferenceSession.create(cnnUrl, { executionProviders: ['wasm'] });
-
-    statusEl.textContent = '⏳ Loading precomputed BiLSTM results...';
-    const [scalersResp, configResp, lstmResp] = await Promise.all([
-      fetch(new URL('models/scalers.json',          window.location.href).href),
-      fetch(new URL('models/config.json',           window.location.href).href),
-      fetch(new URL('models/lstm_precomputed.json', window.location.href).href),
+    const [scalersResp, configResp, lstmResp, cnnResp] = await Promise.all([
+      fetch(new URL('models/scalers.json',           window.location.href).href),
+      fetch(new URL('models/config.json',            window.location.href).href),
+      fetch(new URL('models/lstm_precomputed.json',  window.location.href).href),
+      fetch(new URL('models/cnn_precomputed.json',   window.location.href).href),
     ]);
+
+    if (!scalersResp.ok) throw new Error('scalers.json not found');
+    if (!lstmResp.ok)    throw new Error('lstm_precomputed.json not found');
+    if (!cnnResp.ok)     throw new Error('cnn_precomputed.json not found');
+
     scalers         = await scalersResp.json();
     config          = await configResp.json();
     lstmPrecomputed = await lstmResp.json();
+    cnnPrecomputed  = await cnnResp.json();
 
     modelsReady = true;
     statusEl.innerHTML =
-      '✓ <span style="color:var(--aqua)">CNN-B — live inference via ONNX</span>' +
+      '✓ <span style="color:var(--aqua)">CNN-B</span>' +
       ' &nbsp;·&nbsp; ' +
-      '<span style="color:var(--aqua)">BiLSTM — pre-computed on original model</span>';
+      '<span style="color:var(--aqua)">BiLSTM</span>' +
+      ' &nbsp;— both models loaded, pre-computed from original Keras models on RAVDESS test samples.';
   } catch (err) {
     statusEl.textContent = '⚠ Could not load models: ' + err.message;
     console.error('Model load error:', err);
@@ -1845,18 +1848,21 @@ async function runInferenceOnFile(url, lstmKey) {
   if (!modelsReady) { showError('Models are still loading. Please wait a moment.'); return; }
   showLoading();
   try {
-    const resp     = await fetch(url);
-    const arrayBuf = await resp.arrayBuffer();
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR });
-    const decoded  = await audioCtx.decodeAudioData(arrayBuf);
-    const samples  = decoded.getChannelData(0);
-    const { X_cnn, X_lstm } = extractFeaturesFromBuffer(samples);
-    const { cnnProbs, lstmProbs } = await runInference(X_cnn, X_lstm, lstmKey);
+    // Both models use precomputed results keyed by e.g. "angry_1", "calm_2"
+    const cnnEntry  = cnnPrecomputed  ? cnnPrecomputed[lstmKey]  : null;
+    const lstmEntry = lstmPrecomputed ? lstmPrecomputed[lstmKey] : null;
+
+    if (!cnnEntry)  throw new Error(`No precomputed CNN-B result for key: ${lstmKey}`);
+
+    const cnnProbs  = cnnEntry.probs;
+    const lstmProbs = lstmEntry ? lstmEntry.probs : null;
+
+    // Still play the audio — just don't block on feature extraction
     hideLoading();
     displayPredictions(cnnProbs, lstmProbs);
   } catch(err) {
     hideLoading();
-    showError('Could not process audio file: ' + err.message);
+    showError('Could not load predictions: ' + err.message);
     console.error(err);
   }
 }
@@ -2035,18 +2041,22 @@ function showError(msg) {
    BOOT
 ═══════════════════════════════════════════ */
 // Load TF.js then models - replaced with precomputed
-(function loadONNX() {
-  const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js';
-  script.onload = () => {
-    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
-    loadModels();
-  };
-  script.onerror = () => {
-    statusEl.textContent = '⚠ ONNX Runtime failed to load. Check your internet connection.';
-  };
-  document.head.appendChild(script);
-})();
+// (function loadONNX() {
+//   const script = document.createElement('script');
+//   script.src = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/ort.min.js';
+//   script.onload = () => {
+//     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/';
+//     loadModels();
+//   };
+//   script.onerror = () => {
+//     statusEl.textContent = '⚠ ONNX Runtime failed to load. Check your internet connection.';
+//   };
+//   document.head.appendChild(script);
+// })();
+  
+// Load precomputed predictions for both models
+// (ONNX not needed — CNN-B and BiLSTM both use pre-computed JSON results)
+loadModels();
 
   /* ═══════════════════════════════════════════
    EDA CHART
