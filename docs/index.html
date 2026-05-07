@@ -1500,6 +1500,118 @@ new Chart(document.getElementById('chartDelta'), {
 });
 
 /* ═══════════════════════════════════════════
+   TRAINING LOSS CURVES
+═══════════════════════════════════════════ */
+(async function renderLossCurves() {
+  const statusEl = document.getElementById('lossLoadStatus');
+  const base = new URL('models/histories/', window.location.href).href;
+
+  const files = {
+    cnn_a: { plain: 'cnn_a_plain_history.json', aug: 'cnn_a_augmented_history.json' },
+    cnn_b: { plain: 'cnn_b_plain_history.json', aug: 'cnn_b_augmented_history.json' },
+    lstm:  { plain: 'lstm_plain_history.json',  aug: 'lstm_augmented_history.json'  },
+  };
+
+  const charts = [
+    { key: 'cnn_a', canvasId: 'lossChartCNNA' },
+    { key: 'cnn_b', canvasId: 'lossChartCNNB' },
+    { key: 'lstm',  canvasId: 'lossChartLSTM' },
+  ];
+
+  // Helper: fetch one history JSON and extract val_loss
+  async function fetchLoss(filename) {
+    const resp = await fetch(base + filename);
+    if (!resp.ok) throw new Error(`${filename} not found`);
+    const data = await resp.json();
+    // History JSONs may store val_loss directly or nested under a key
+    const loss = data.val_loss ?? data.history?.val_loss ?? data.val_loss;
+    if (!loss) throw new Error(`val_loss not found in ${filename}`);
+    return loss;
+  }
+
+  try {
+    for (const { key, canvasId } of charts) {
+      const [plainLoss, augLoss] = await Promise.all([
+        fetchLoss(files[key].plain),
+        fetchLoss(files[key].aug),
+      ]);
+
+      const maxEpochs = Math.max(plainLoss.length, augLoss.length);
+      const labels    = Array.from({ length: maxEpochs }, (_, i) => i + 1);
+
+      new Chart(document.getElementById(canvasId), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label:           'Plain',
+              data:            plainLoss,
+              borderColor:     'rgba(92,158,171,.7)',
+              backgroundColor: 'rgba(92,158,171,.08)',
+              borderWidth:     1.5,
+              pointRadius:     0,
+              tension:         0.3,
+              fill:            false,
+            },
+            {
+              label:           'Augmented',
+              data:            augLoss,
+              borderColor:     'rgba(156,210,209,.9)',
+              backgroundColor: 'rgba(156,210,209,.08)',
+              borderWidth:     1.5,
+              pointRadius:     0,
+              tension:         0.3,
+              fill:            false,
+            },
+          ],
+        },
+        options: {
+          responsive:  true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font:          { size: 9 },
+                usePointStyle: true,
+                padding:       10,
+              },
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(4)}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid:  { color: 'rgba(92,158,171,.08)' },
+              ticks: { font: { size: 8 }, maxTicksLimit: 10,
+                       callback: (_, i) => i % Math.ceil(maxEpochs / 8) === 0 ? labels[i] : '' },
+              title: { display: true, text: 'Epoch',
+                       font: { family: "'DM Mono', monospace", size: 8 },
+                       color: 'rgba(34,39,62,.45)' },
+            },
+            y: {
+              grid:  { color: 'rgba(92,158,171,.08)' },
+              ticks: { font: { size: 8 }, callback: v => v.toFixed(2) },
+              title: { display: true, text: 'Val Loss',
+                       font: { family: "'DM Mono', monospace", size: 8 },
+                       color: 'rgba(34,39,62,.45)' },
+            },
+          },
+        },
+      });
+    }
+    statusEl.textContent = '// loss curves loaded from training histories';
+  } catch (err) {
+    statusEl.textContent = '⚠ Could not load history files: ' + err.message;
+    console.error('Loss curve error:', err);
+  }
+})();
+  
+/* ═══════════════════════════════════════════
    TABS
 ═══════════════════════════════════════════ */
 function switchTab(name) {
