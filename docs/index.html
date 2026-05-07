@@ -1164,6 +1164,35 @@
       <canvas id="chartDelta" height="220"></canvas>
     </div>
   </div>
+
+<!-- TRAINING LOSS CURVES -->
+<div style="margin-top:3rem;">
+  <div class="section-label" style="margin-bottom:.8rem;">Training dynamics · loss curves</div>
+  <p style="font-size:.85rem;color:rgba(34,39,62,.6);margin-bottom:1.8rem;font-weight:300;max-width:640px;">
+    Validation loss across all six trained models — plain and augmented side by side for each architecture.
+    Lower final loss and slower convergence indicate better generalisation.
+  </p>
+
+  <div id="lossChartsGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;">
+    <!-- CNN-A -->
+    <div class="chart-card">
+      <div class="chart-title">CNN-A · plain vs augmented</div>
+      <canvas id="lossChartCNNA" height="200"></canvas>
+    </div>
+    <!-- CNN-B -->
+    <div class="chart-card">
+      <div class="chart-title">CNN-B · plain vs augmented</div>
+      <canvas id="lossChartCNNB" height="200"></canvas>
+    </div>
+    <!-- BiLSTM -->
+    <div class="chart-card">
+      <div class="chart-title">BiLSTM · plain vs augmented</div>
+      <canvas id="lossChartLSTM" height="200"></canvas>
+    </div>
+  </div>
+  <p id="lossLoadStatus" style="font-family:'DM Mono',monospace;font-size:.65rem;color:rgba(34,39,62,.4);margin-top:.8rem;letter-spacing:.06em;"></p>
+</div>
+  
 </section>
 
 <hr class="section-divider">
