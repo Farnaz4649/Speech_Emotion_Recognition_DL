@@ -1166,31 +1166,59 @@
   </div>
 
 <!-- TRAINING LOSS CURVES -->
-<div style="margin-top:3rem;">
+<div style="margin-top:3rem;" class="reveal">
   <div class="section-label" style="margin-bottom:.8rem;">Training dynamics · loss curves</div>
-  <p style="font-size:.85rem;color:rgba(34,39,62,.6);margin-bottom:1.8rem;font-weight:300;max-width:640px;">
-    Validation loss across all six trained models — plain and augmented side by side for each architecture.
-    Lower final loss and slower convergence indicate better generalisation.
+  <p style="font-size:.85rem;color:rgba(34,39,62,.6);margin-bottom:1.8rem;font-weight:300;max-width:680px;">
+    Training loss vs validation loss for all six models. A widening gap between the two lines indicates overfitting. Slower convergence with a tighter gap signals better generalisation.
   </p>
 
-  <div id="lossChartsGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;">
-    <!-- CNN-A -->
-    <div class="chart-card">
-      <div class="chart-title">CNN-A · plain vs augmented</div>
-      <canvas id="lossChartCNNA" height="200"></canvas>
-    </div>
-    <!-- CNN-B -->
-    <div class="chart-card">
-      <div class="chart-title">CNN-B · plain vs augmented</div>
-      <canvas id="lossChartCNNB" height="200"></canvas>
-    </div>
-    <!-- BiLSTM -->
-    <div class="chart-card">
-      <div class="chart-title">BiLSTM · plain vs augmented</div>
-      <canvas id="lossChartLSTM" height="200"></canvas>
-    </div>
+  <!-- 2-col header -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:.5rem;">
+    <div style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--pacific);letter-spacing:.1em;text-transform:uppercase;padding:.4rem .8rem;background:rgba(92,158,171,.08);border-radius:4px;text-align:center;">Plain regime</div>
+    <div style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--aqua);letter-spacing:.1em;text-transform:uppercase;padding:.4rem .8rem;background:rgba(156,210,209,.08);border-radius:4px;text-align:center;">Augmented regime</div>
   </div>
-  <p id="lossLoadStatus" style="font-family:'DM Mono',monospace;font-size:.65rem;color:rgba(34,39,62,.4);margin-top:.8rem;letter-spacing:.06em;"></p>
+
+  <!-- 2×3 grid -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;">
+
+    <!-- CNN-A plain -->
+    <div class="chart-card" style="position:relative;">
+      <div class="chart-title">CNN-A · plain &nbsp;<span style="color:rgba(34,39,62,.35);font-weight:300;">29 epochs</span></div>
+      <canvas id="lossChart_cnna_plain" height="180"></canvas>
+    </div>
+
+    <!-- CNN-A augmented -->
+    <div class="chart-card" style="position:relative;">
+      <div class="chart-title">CNN-A · augmented &nbsp;<span style="color:rgba(34,39,62,.35);font-weight:300;">37 epochs</span></div>
+      <canvas id="lossChart_cnna_aug" height="180"></canvas>
+    </div>
+
+    <!-- CNN-B plain -->
+    <div class="chart-card">
+      <div class="chart-title">CNN-B · plain &nbsp;<span style="color:rgba(34,39,62,.35);font-weight:300;">62 epochs</span></div>
+      <canvas id="lossChart_cnnb_plain" height="180"></canvas>
+    </div>
+
+    <!-- CNN-B augmented -->
+    <div class="chart-card">
+      <div class="chart-title">CNN-B · augmented &nbsp;<span style="color:rgba(34,39,62,.35);font-weight:300;">82 epochs</span></div>
+      <canvas id="lossChart_cnnb_aug" height="180"></canvas>
+    </div>
+
+    <!-- BiLSTM plain -->
+    <div class="chart-card">
+      <div class="chart-title">BiLSTM · plain &nbsp;<span style="color:rgba(34,39,62,.35);font-weight:300;">35 epochs</span></div>
+      <canvas id="lossChart_lstm_plain" height="180"></canvas>
+    </div>
+
+    <!-- BiLSTM augmented -->
+    <div class="chart-card">
+      <div class="chart-title">BiLSTM · augmented &nbsp;<span style="color:rgba(34,39,62,.35);font-weight:300;">32 epochs</span></div>
+      <canvas id="lossChart_lstm_aug" height="180"></canvas>
+    </div>
+
+  </div>
+  <p id="lossLoadStatus" style="font-family:'DM Mono',monospace;font-size:.63rem;color:rgba(34,39,62,.35);margin-top:.8rem;letter-spacing:.06em;"></p>
 </div>
   
 </section>
@@ -1500,113 +1528,127 @@ new Chart(document.getElementById('chartDelta'), {
 });
 
 /* ═══════════════════════════════════════════
-   TRAINING LOSS CURVES
+   TRAINING LOSS CURVES — 6 charts, 2×3 grid
 ═══════════════════════════════════════════ */
 (async function renderLossCurves() {
   const statusEl = document.getElementById('lossLoadStatus');
   const base = new URL('models/histories/', window.location.href).href;
 
-  const files = {
-    cnn_a: { plain: 'cnn_a_plain_history.json', aug: 'cnn_a_augmented_history.json' },
-    cnn_b: { plain: 'cnn_b_plain_history.json', aug: 'cnn_b_augmented_history.json' },
-    lstm:  { plain: 'lstm_plain_history.json',  aug: 'lstm_augmented_history.json'  },
-  };
-
-  const charts = [
-    { key: 'cnn_a', canvasId: 'lossChartCNNA' },
-    { key: 'cnn_b', canvasId: 'lossChartCNNB' },
-    { key: 'lstm',  canvasId: 'lossChartLSTM' },
+  const CHARTS = [
+    { id: 'lossChart_cnna_plain', file: 'cnn_a_plain_history.json'      },
+    { id: 'lossChart_cnna_aug',   file: 'cnn_a_augmented_history.json'  },
+    { id: 'lossChart_cnnb_plain', file: 'cnn_b_plain_history.json'      },
+    { id: 'lossChart_cnnb_aug',   file: 'cnn_b_augmented_history.json'  },
+    { id: 'lossChart_lstm_plain', file: 'lstm_plain_history.json'       },
+    { id: 'lossChart_lstm_aug',   file: 'lstm_augmented_history.json'   },
   ];
 
-  // Helper: fetch one history JSON and extract val_loss
-  async function fetchLoss(filename) {
-    const resp = await fetch(base + filename);
-    if (!resp.ok) throw new Error(`${filename} not found`);
-    const data = await resp.json();
-    // History JSONs may store val_loss directly or nested under a key
-    const loss = data.val_loss ?? data.history?.val_loss ?? data.val_loss;
-    if (!loss) throw new Error(`val_loss not found in ${filename}`);
-    return loss;
+  function makeLossChart(canvasId, trainLoss, valLoss) {
+    const n      = Math.max(trainLoss.length, valLoss.length);
+    const labels = Array.from({ length: n }, (_, i) => i + 1);
+
+    // y-axis max: cap at 2× the final val_loss to avoid early spike distortion
+    const finalVal  = valLoss[valLoss.length - 1];
+    const yMax      = Math.min(Math.max(...valLoss, ...trainLoss), finalVal * 4);
+    const yMaxRound = parseFloat((Math.ceil(yMax * 4) / 4).toFixed(2));
+
+    new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label:           'Train loss',
+            data:            trainLoss,
+            borderColor:     'rgba(92,158,171,.85)',
+            backgroundColor: 'transparent',
+            borderWidth:     1.5,
+            pointRadius:     0,
+            tension:         0.25,
+          },
+          {
+            label:           'Val loss',
+            data:            valLoss,
+            borderColor:     'rgba(156,210,209,.95)',
+            backgroundColor: 'rgba(156,210,209,.06)',
+            borderWidth:     1.5,
+            pointRadius:     0,
+            tension:         0.25,
+            fill:            '-1',   // fills area between val and train
+            borderDash:      [4, 3],
+          },
+        ],
+      },
+      options: {
+        responsive:  true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font:          { size: 9, family: "'DM Mono', monospace" },
+              usePointStyle: true,
+              padding:       10,
+              color:         'rgba(34,39,62,.6)',
+            },
+          },
+          tooltip: {
+            callbacks: {
+              title: items  => `Epoch ${items[0].label}`,
+              label: ctx    => ` ${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(4)}`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid:  { color: 'rgba(92,158,171,.07)' },
+            ticks: {
+              font:          { size: 8, family: "'DM Mono', monospace" },
+              color:         'rgba(34,39,62,.4)',
+              maxTicksLimit: 8,
+            },
+            title: {
+              display: true,
+              text:    'Epoch',
+              font:    { family: "'DM Mono', monospace", size: 8 },
+              color:   'rgba(34,39,62,.35)',
+            },
+          },
+          y: {
+            min:   0,
+            max:   yMaxRound,
+            grid:  { color: 'rgba(92,158,171,.07)' },
+            ticks: {
+              font:          { size: 8, family: "'DM Mono', monospace" },
+              color:         'rgba(34,39,62,.4)',
+              maxTicksLimit: 6,
+              callback:      v => v.toFixed(2),
+            },
+            title: {
+              display: true,
+              text:    'Loss',
+              font:    { family: "'DM Mono', monospace", size: 8 },
+              color:   'rgba(34,39,62,.35)',
+            },
+          },
+        },
+      },
+    });
   }
 
   try {
-    for (const { key, canvasId } of charts) {
-      const [plainLoss, augLoss] = await Promise.all([
-        fetchLoss(files[key].plain),
-        fetchLoss(files[key].aug),
-      ]);
-
-      const maxEpochs = Math.max(plainLoss.length, augLoss.length);
-      const labels    = Array.from({ length: maxEpochs }, (_, i) => i + 1);
-
-      new Chart(document.getElementById(canvasId), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label:           'Plain',
-              data:            plainLoss,
-              borderColor:     'rgba(92,158,171,.7)',
-              backgroundColor: 'rgba(92,158,171,.08)',
-              borderWidth:     1.5,
-              pointRadius:     0,
-              tension:         0.3,
-              fill:            false,
-            },
-            {
-              label:           'Augmented',
-              data:            augLoss,
-              borderColor:     'rgba(156,210,209,.9)',
-              backgroundColor: 'rgba(156,210,209,.08)',
-              borderWidth:     1.5,
-              pointRadius:     0,
-              tension:         0.3,
-              fill:            false,
-            },
-          ],
-        },
-        options: {
-          responsive:  true,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: {
-                font:          { size: 9 },
-                usePointStyle: true,
-                padding:       10,
-              },
-            },
-            tooltip: {
-              callbacks: {
-                label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(4)}`,
-              },
-            },
-          },
-          scales: {
-            x: {
-              grid:  { color: 'rgba(92,158,171,.08)' },
-              ticks: { font: { size: 8 }, maxTicksLimit: 10,
-                       callback: (_, i) => i % Math.ceil(maxEpochs / 8) === 0 ? labels[i] : '' },
-              title: { display: true, text: 'Epoch',
-                       font: { family: "'DM Mono', monospace", size: 8 },
-                       color: 'rgba(34,39,62,.45)' },
-            },
-            y: {
-              grid:  { color: 'rgba(92,158,171,.08)' },
-              ticks: { font: { size: 8 }, callback: v => v.toFixed(2) },
-              title: { display: true, text: 'Val Loss',
-                       font: { family: "'DM Mono', monospace", size: 8 },
-                       color: 'rgba(34,39,62,.45)' },
-            },
-          },
-        },
-      });
-    }
-    statusEl.textContent = '// loss curves loaded from training histories';
+    await Promise.all(CHARTS.map(async ({ id, file }) => {
+      const resp = await fetch(base + file);
+      if (!resp.ok) throw new Error(`${file} returned ${resp.status}`);
+      const data  = await resp.json();
+      const train = data.loss;
+      const val   = data.val_loss;
+      if (!train || !val) throw new Error(`loss/val_loss keys missing in ${file}`);
+      makeLossChart(id, train, val);
+    }));
+    statusEl.textContent = '// loss curves loaded from training history JSONs';
   } catch (err) {
-    statusEl.textContent = '⚠ Could not load history files: ' + err.message;
+    statusEl.textContent = '⚠ ' + err.message;
     console.error('Loss curve error:', err);
   }
 })();
