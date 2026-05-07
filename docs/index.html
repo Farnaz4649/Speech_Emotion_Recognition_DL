@@ -1485,19 +1485,22 @@ function switchTab(name) {
    AUDIO CARD GRID
 ═══════════════════════════════════════════ */
 const EMOTIONS = [
-  { label: 'Angry',     emoji: '😠', file: 'angry_1.wav'    },
-  { label: 'Calm',      emoji: '😌', file: 'calm_1.wav'     },
-  { label: 'Disgust',   emoji: '🤢', file: 'disgust_1.wav'  },
-  { label: 'Fearful',   emoji: '😨', file: 'fearful_1.wav'  },
-  { label: 'Happy',     emoji: '😄', file: 'happy_1.wav'    },
-  { label: 'Neutral',   emoji: '😐', file: 'neutral_1.wav'  },
-  { label: 'Sad',       emoji: '😢', file: 'sad_1.wav'      },
-  { label: 'Surprised', emoji: '😲', file: 'surprised_1.wav'},
+  { label: 'Angry',     emoji: '😠', files: ['angry_1.wav',    'angry_2.wav']    },
+  { label: 'Calm',      emoji: '😌', files: ['calm_1.wav',     'calm_2.wav']     },
+  { label: 'Disgust',   emoji: '🤢', files: ['disgust_1.wav',  'disgust_2.wav']  },
+  { label: 'Fearful',   emoji: '😨', files: ['fearful_1.wav',  'fearful_2.wav']  },
+  { label: 'Happy',     emoji: '😄', files: ['happy_1.wav',    'happy_2.wav']    },
+  { label: 'Neutral',   emoji: '😐', files: ['neutral_1.wav',  'neutral_2.wav']  },
+  { label: 'Sad',       emoji: '😢', files: ['sad_1.wav',      'sad_2.wav']      },
+  { label: 'Surprised', emoji: '😲', files: ['surprised_1.wav','surprised_2.wav']},
 ];
 const CLASS_NAMES = ['angry','calm','disgust','fearful','happy','neutral','sad','surprised'];
 
+// Tracks which sample index (0 or 1) each emotion is currently showing
+let sampleIndex = 0;
+
 let activeAudio = null;
-let activeCard = null;
+let activeCard  = null;
 
 const grid = document.getElementById('audioGrid');
 EMOTIONS.forEach(em => {
@@ -1507,7 +1510,7 @@ EMOTIONS.forEach(em => {
     <div class="emotion-emoji">${em.emoji}</div>
     <div class="emotion-label">${em.label}</div>
     <div class="play-icon">▶</div>
-    <div class="audio-filename">${em.file}</div>
+    <div class="audio-filename" id="filename-${em.label.toLowerCase()}">${em.files[0]}</div>
   `;
   card.addEventListener('click', () => selectAudioCard(card, em));
   grid.appendChild(card);
@@ -1525,9 +1528,23 @@ function selectAudioCard(card, em) {
   audio.play().catch(() => {});
   audio.addEventListener('ended', () => card.classList.remove('playing'));
 
-  // Build the key e.g. "angry_1" or "angry_2" (sampleIndex is 0-based, keys are 1-based)
-  const lstmKey = `${em.label.toLowerCase()}_${sampleIndex + 1}`;
-  runInferenceOnFile(`audio_samples/${currentFile}`, lstmKey);
+  runInferenceOnFile(`audio_samples/${currentFile}`, em.label.toLowerCase());
+}
+
+function resetRecordingsDemo() {
+  if (activeAudio) { activeAudio.pause(); activeAudio = null; }
+  if (activeCard)  { activeCard.classList.remove('selected', 'playing'); activeCard = null; }
+
+  // Advance to next sample index, wrapping at 2
+  sampleIndex = (sampleIndex + 1) % 2;
+
+  // Update all filename labels so users can see which sample is queued
+  EMOTIONS.forEach(em => {
+    const label = document.getElementById(`filename-${em.label.toLowerCase()}`);
+    if (label) label.textContent = em.files[sampleIndex];
+  });
+
+  resetPredictionUI();
 }
 
 function resetRecordingsDemo() {
