@@ -1496,9 +1496,7 @@ const EMOTIONS = [
 ];
 const CLASS_NAMES = ['angry','calm','disgust','fearful','happy','neutral','sad','surprised'];
 
-// Tracks which sample index (0 or 1) each emotion is currently showing
 let sampleIndex = 0;
-
 let activeAudio = null;
 let activeCard  = null;
 
@@ -1528,17 +1526,17 @@ function selectAudioCard(card, em) {
   audio.play().catch(() => {});
   audio.addEventListener('ended', () => card.classList.remove('playing'));
 
-  runInferenceOnFile(`audio_samples/${currentFile}`, em.label.toLowerCase());
+  // key matches precomputed JSON: "angry_1", "angry_2", etc.
+  const lstmKey = `${em.label.toLowerCase()}_${sampleIndex + 1}`;
+  runInferenceOnFile(`audio_samples/${currentFile}`, lstmKey);
 }
 
 function resetRecordingsDemo() {
   if (activeAudio) { activeAudio.pause(); activeAudio = null; }
   if (activeCard)  { activeCard.classList.remove('selected', 'playing'); activeCard = null; }
 
-  // Advance to next sample index, wrapping at 2
   sampleIndex = (sampleIndex + 1) % 2;
 
-  // Update all filename labels so users can see which sample is queued
   EMOTIONS.forEach(em => {
     const label = document.getElementById(`filename-${em.label.toLowerCase()}`);
     if (label) label.textContent = em.files[sampleIndex];
@@ -1547,19 +1545,8 @@ function resetRecordingsDemo() {
   resetPredictionUI();
 }
 
-function resetRecordingsDemo() {
-  if (activeAudio) { activeAudio.pause(); activeAudio = null; }
-  if (activeCard)  { activeCard.classList.remove('selected','playing'); activeCard = null; }
-  resetPredictionUI();
-}
-
-/* ═══════════════════════════════════════════
-   TF.JS MODEL LOADING
-═══════════════════════════════════════════ */
-let cnnModel  = null;
-let lstmModel = null;
-let scalers   = null;
-let config    = null;
+let scalers     = null;
+let config      = null;
 let modelsReady = false;
 
 const statusEl = document.getElementById('model-loading-status');
